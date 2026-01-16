@@ -3,6 +3,12 @@
 # dependencies
 node_modules/
 
+node_modules/
+.expo/
+.env
+.env.*
+.DS_Store
+
 # Expo
 .expo/
 dist/
