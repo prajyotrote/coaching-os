@@ -2,6 +2,28 @@ import { View, Text, Pressable, StyleSheet, FlatList } from 'react-native';
 import { useState, useMemo } from 'react';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
+
+const saveWeight = async (weightKg: number | null) => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  await supabase
+    .from('user_onboarding')
+    .upsert({
+      user_id: user.id,
+      weight_kg: weightKg,
+    });
+
+  await supabase
+    .from('profiles')
+    .update({ onboarding_step: 5 })
+    .eq('id', user.id);
+};
+
 
 const MIN_KG = 30;
 const MAX_KG = 250;
@@ -30,7 +52,11 @@ export default function WeightScreen() {
           <Feather name="chevron-left" size={26} color="#94a3b8" />
         </Pressable>
 
-        <Pressable onPress={() => router.replace('/Onboarding/user/activitylevel')}>
+        <Pressable onPress={async () => {
+  await saveWeight(null);
+  router.replace('/Onboarding/user/activitylevel');
+}}
+>
           <Text style={styles.skip}>Skip</Text>
         </Pressable>
       </View>
@@ -110,7 +136,11 @@ export default function WeightScreen() {
       {/* Next */}
       <Pressable
         style={styles.next}
-        onPress={() => router.replace('/Onboarding/user/activitylevel')}
+        onPress={async () => {
+  await saveWeight(weightKg);
+  router.replace('/Onboarding/user/activitylevel');
+}}
+
       >
         <Text style={styles.nextText}>Next</Text>
         <Feather name="arrow-right" size={18} color="#000" />

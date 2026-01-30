@@ -2,6 +2,28 @@ import { View, Text, Pressable, StyleSheet, FlatList } from 'react-native';
 import { useState, useMemo } from 'react';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
+
+const saveHeight = async (heightCm: number | null) => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  await supabase
+    .from('user_onboarding')
+    .upsert({
+      user_id: user.id,
+      height_cm: heightCm,
+    });
+
+  await supabase
+    .from('profiles')
+    .update({ onboarding_step: 4 })
+    .eq('id', user.id);
+};
+
 
 const MIN_CM = 100;
 const MAX_CM = 250;
@@ -33,7 +55,11 @@ export default function HeightScreen() {
           <Feather name="chevron-left" size={26} color="#94a3b8" />
         </Pressable>
 
-        <Pressable onPress={() => router.replace('/Onboarding/user/weight')}>
+        <Pressable onPress={async () => {
+  await saveHeight(null);
+  router.replace('/Onboarding/user/weight');
+}}
+>
           <Text style={styles.skip}>Skip</Text>
         </Pressable>
       </View>
@@ -120,7 +146,11 @@ export default function HeightScreen() {
       {/* Next */}
       <Pressable
         style={styles.next}
-        onPress={() => router.replace('/Onboarding/user/weight')}
+        onPress={async () => {
+  await saveHeight(heightCm);
+  router.replace('/Onboarding/user/weight');
+}}
+
       >
         <Text style={styles.nextText}>Next</Text>
         <Feather name="arrow-right" size={18} color="#000" />

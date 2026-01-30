@@ -1,6 +1,28 @@
 import { View, Text, Pressable, StyleSheet, FlatList, Image, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
+
+const saveGoals = async (goals: string[], otherGoal: string) => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  await supabase
+    .from('user_onboarding')
+    .upsert({
+      user_id: user.id,
+      goals,
+      other_goal: otherGoal.trim() || null,
+    });
+
+  await supabase
+    .from('profiles')
+    .update({ onboarding_step: 5 })
+    .eq('id', user.id);
+};
 
 const GOALS = [
   { id: 'weight', label: 'Lose Weight', image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=200' },
@@ -73,7 +95,11 @@ export default function UserGoalsScreen() {
       <View style={styles.footer}>
         <Pressable
           disabled={!canContinue}
-          onPress={() => router.replace('/Onboarding/user/gender')}
+        onPress={async () => {
+  await saveGoals(selected, other);
+  router.replace('/Onboarding/user/lifestyle');
+}}
+
           style={[
             styles.nextButton,
             !canContinue && { opacity: 0.4 },

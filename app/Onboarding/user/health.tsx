@@ -2,6 +2,27 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
+
+const saveHealthConditions = async (conditions: string[]) => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  await supabase
+    .from('user_onboarding')
+    .upsert({
+      user_id: user.id,
+      health_conditions: conditions.length ? conditions : ['none'],
+    });
+
+  await supabase
+    .from('profiles')
+    .update({ onboarding_step: 5 })
+    .eq('id', user.id);
+};
 
 const CONDITIONS = [
   'Obesity',
@@ -39,7 +60,11 @@ export default function HealthConditionsScreen() {
           <Feather name="chevron-left" size={26} color="#94a3b8" />
         </Pressable>
 
-        <Pressable onPress={() => router.replace('/Onboarding/user/lifestyle')}>
+        <Pressable onPress={async () => {
+  await saveHealthConditions(['none']);
+  router.replace('/Onboarding/user/goals');
+}}
+>
           <Text style={styles.skip}>Skip</Text>
         </Pressable>
       </View>
@@ -88,9 +113,11 @@ export default function HealthConditionsScreen() {
 
         <Pressable
           style={styles.next}
-          onPress={() =>
-            router.replace('/Onboarding/user/lifestyle')
-          }
+          onPress={async () => {
+  await saveHealthConditions(selected);
+  router.replace('/Onboarding/user/goals');
+}}
+
         >
           <Text style={styles.nextText}>Next</Text>
           <Feather name="arrow-right" size={18} color="#000" />

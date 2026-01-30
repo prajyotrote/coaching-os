@@ -10,6 +10,30 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
+import { supabase } from '@/lib/supabase';
+
+const saveName = async (name: string) => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  // 1️⃣ Save data
+  await supabase
+    .from('user_onboarding')
+    .upsert({
+      user_id: user.id,
+      name,
+    });
+
+  // 2️⃣ Advance step
+  await supabase
+    .from('profiles')
+    .update({ onboarding_step: 1 })
+    .eq('id', user.id);
+};
+
 
 export default function NameScreen() {
   const [name, setName] = useState('');
@@ -21,13 +45,12 @@ export default function NameScreen() {
 
   const isValid = name.trim().length >= 2;
 
-  const goNext = () => {
-    if (!isValid) return;
+  const goNext = async () => {
+  if (!isValid) return;
 
-    // later:
-    // save name to supabase / store
-    router.push('/Onboarding/user/gender');
-  };
+  await saveName(name.trim());
+  router.push('/Onboarding/user/gender');
+};
 
   return (
     <KeyboardAvoidingView
@@ -69,9 +92,19 @@ export default function NameScreen() {
           onSubmitEditing={goNext}
         />
 
-        <Pressable onPress={() => router.push('/Onboarding/user/gender')}>
-          <Text style={styles.skip}>Skip for now</Text>
-        </Pressable>
+        <Pressable
+  onPress={async () => {
+    await supabase
+      .from('profiles')
+      .update({ onboarding_step: 1 })
+      .eq('id', (await supabase.auth.getUser()).data.user?.id);
+
+    router.push('/Onboarding/user/gender');
+  }}
+>
+  <Text style={styles.skip}>Skip for now</Text>
+</Pressable>
+
       </View>
 
       {/* CTA */}

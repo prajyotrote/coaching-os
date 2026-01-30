@@ -11,6 +11,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { Feather } from '@expo/vector-icons';
 import { Keyboard } from 'react-native';
+import { DEV_MODE, DEV_PHONES } from '@/lib/devAuth';
+
 
 
 export default function LoginScreen() {
@@ -30,27 +32,41 @@ export default function LoginScreen() {
   }, []);
 
   const sendOtp = async () => {
-    if (!isValid || loading) return;
+  if (!isValid || loading) return;
 
-    setLoading(true);
+  setLoading(true);
 
-    const formattedPhone = `+91${phone}`;
+  const formattedPhone = `+91${phone}`;
 
-    await AsyncStorage.setItem('auth_phone', formattedPhone);
+  // store phone for verify screen
+  await AsyncStorage.setItem('auth_phone', formattedPhone);
 
-    const { error } = await supabase.auth.signInWithOtp({
-      phone: formattedPhone,
-    });
-
+  /* -------------------------------
+     🧪 DEV OTP MODE (NO SMS)
+  -------------------------------- */
+  if (DEV_MODE && DEV_PHONES.includes(formattedPhone)) {
     setLoading(false);
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
     router.push('/verify');
-  };
+    return;
+  }
+
+  /* -------------------------------
+     🔐 REAL OTP (SMS)
+  -------------------------------- */
+  const { error } = await supabase.auth.signInWithOtp({
+    phone: formattedPhone,
+  });
+
+  setLoading(false);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  router.push('/verify');
+};
+
 
   return (
     <View style={styles.container}>

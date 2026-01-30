@@ -2,6 +2,29 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
+
+const saveGender = async (gender: 'male' | 'female' | null) => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  // Save gender
+  await supabase
+    .from('user_onboarding')
+    .upsert({
+      user_id: user.id,
+      gender,
+    });
+
+  // Advance step
+  await supabase
+    .from('profiles')
+    .update({ onboarding_step: 2 })
+    .eq('id', user.id);
+};
 
 export default function GenderScreen() {
   const [selected, setSelected] = useState<'male' | 'female' | null>(null);
@@ -14,7 +37,11 @@ export default function GenderScreen() {
           <Feather name="chevron-left" size={28} color="#94a3b8" />
         </Pressable>
 
-        <Pressable onPress={() => router.replace('/Onboarding/user/age')}>
+        <Pressable onPress={async () => {
+  await saveGender(null);
+  router.replace('/Onboarding/user/age');
+}}
+>
           <Text style={styles.skip}>Skip</Text>
         </Pressable>
       </View>
@@ -64,7 +91,12 @@ export default function GenderScreen() {
       <View style={styles.footer}>
         <Pressable
           disabled={!selected}
-          onPress={() => router.replace('/Onboarding/user/age')}
+         onPress={async () => {
+  if (!selected) return;
+  await saveGender(selected);
+  router.replace('/Onboarding/user/age');
+}}
+
           style={[
             styles.nextButton,
             !selected && styles.disabled,

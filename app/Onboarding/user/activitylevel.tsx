@@ -2,6 +2,33 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import { router } from 'expo-router';
+import { supabase } from '@/lib/supabase';
+
+
+const saveActivityLevel = async (level?: ActivityLevel) => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  // Save ONLY if user selected
+  if (level) {
+    await supabase.from('user_onboarding').upsert({
+      user_id: user.id,
+      activity_level: level.id,
+      activity_multiplier: level.multiplier,
+    });
+  }
+
+  // Always advance step
+  await supabase
+    .from('profiles')
+    .update({ onboarding_step: 6 })
+    .eq('id', user.id);
+};
+
+
 
 
 type ActivityLevelId =
@@ -72,9 +99,15 @@ export default function ActivityLevelScreen({ onNext, onBack }: Props) {
         <Pressable onPress={onBack} style={styles.backBtn}>
           <Feather name="chevron-left" size={26} color="#94a3b8" />
         </Pressable>
-        <Pressable onPress={() => router.replace('/Onboarding/user/health')}>
-                  <Text style={styles.skip}>Skip</Text>
-                </Pressable>
+        <Pressable
+  onPress={async () => {
+    await saveActivityLevel(); // ⬅️ no default
+    router.replace('/Onboarding/user/health');
+  }}
+>
+  <Text style={styles.skip}>Skip</Text>
+</Pressable>
+
 
         <View style={styles.progress}>
           <View style={styles.progressFill} />
@@ -109,7 +142,7 @@ export default function ActivityLevelScreen({ onNext, onBack }: Props) {
                 <Feather
                   name={level.icon}
                   size={22}
-                  color={isSelected ? '#000' : '#94a3b8'}
+                  color={isSelected ? '#94a3b8' : '#94a3b8'}
                 />
               </View>
 
@@ -133,7 +166,12 @@ export default function ActivityLevelScreen({ onNext, onBack }: Props) {
       {/* CTA */}
       <Pressable
         disabled={!selected}
-        onPress={() => router.replace('/Onboarding/user/health')}
+        onPress={async () => {
+  if (!selected) return;
+  await saveActivityLevel(selected);
+  router.replace('/Onboarding/user/health');
+}}
+
         style={[
           styles.cta,
           !selected && styles.ctaDisabled,

@@ -2,12 +2,60 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
+
+/* ---------------------------------------------------
+   ✅ FINALIZE LIFESTYLE (SAFE VERSION)
+--------------------------------------------------- */
+const finalizeOnboardingData = async (smokes: boolean, drinks: boolean) => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('User not authenticated');
+
+  /* 1️⃣ Save onboarding data (safe to upsert) */
+  const { error: onboardingError } = await supabase
+    .from('user_onboarding')
+    .upsert({
+      user_id: user.id,
+      smokes,
+      drinks,
+    });
+
+  if (onboardingError) {
+    console.error('Failed to save lifestyle', onboardingError);
+    throw onboardingError;
+  }
+
+  /* 2️⃣ ONLY update profile (never insert) */
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .update({
+      onboarding_step: 7,
+    })
+    .eq('id', user.id);
+
+  if (profileError) {
+    console.error('Failed to update profile onboarding step', profileError);
+    throw profileError;
+  }
+};
 
 export default function LifestyleScreen() {
   const [smoke, setSmoke] = useState(false);
   const [drink, setDrink] = useState(false);
 
   const isAnySelected = smoke || drink;
+
+  const goToSummary = async (s: boolean, d: boolean) => {
+    try {
+      await finalizeOnboardingData(s, d);
+      router.replace('/Onboarding/user/summary');
+    } catch (e) {
+      console.error('Lifestyle finalize failed', e);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -17,7 +65,7 @@ export default function LifestyleScreen() {
           <Feather name="chevron-left" size={26} color="#94a3b8" />
         </Pressable>
 
-        <Pressable onPress={() => router.replace('/Onboarding/user/summary')}>
+        <Pressable onPress={() => goToSummary(false, false)}>
           <Text style={styles.skip}>Skip</Text>
         </Pressable>
       </View>
@@ -30,52 +78,26 @@ export default function LifestyleScreen() {
 
       {/* Cards */}
       <View style={styles.cardsRow}>
-        {/* Smoke */}
         <Pressable
-          style={[
-            styles.card,
-            smoke && styles.cardActive,
-          ]}
+          style={[styles.card, smoke && styles.cardActive]}
           onPress={() => setSmoke(!smoke)}
         >
           <View style={styles.iconCircle}>
-            <Feather
-              name="slash"
-              size={24}
-              color={smoke ? '#fff' : '#94a3b8'}
-            />
+            <Feather name="slash" size={24} color={smoke ? '#fff' : '#94a3b8'} />
           </View>
-          <Text
-            style={[
-              styles.cardText,
-              smoke && styles.cardTextActive,
-            ]}
-          >
+          <Text style={[styles.cardText, smoke && styles.cardTextActive]}>
             I Smoke
           </Text>
         </Pressable>
 
-        {/* Drink */}
         <Pressable
-          style={[
-            styles.card,
-            drink && styles.cardActive,
-          ]}
+          style={[styles.card, drink && styles.cardActive]}
           onPress={() => setDrink(!drink)}
         >
           <View style={styles.iconCircle}>
-            <Feather
-              name="coffee"
-              size={24}
-              color={drink ? '#fff' : '#94a3b8'}
-            />
+            <Feather name="coffee" size={24} color={drink ? '#fff' : '#94a3b8'} />
           </View>
-          <Text
-            style={[
-              styles.cardText,
-              drink && styles.cardTextActive,
-            ]}
-          >
+          <Text style={[styles.cardText, drink && styles.cardTextActive]}>
             I Drink
           </Text>
         </Pressable>
@@ -85,25 +107,21 @@ export default function LifestyleScreen() {
       <View style={styles.footer}>
         <Pressable
           style={styles.nextButton}
-          onPress={() =>
-            router.replace('/Onboarding/user/summary')
-          }
+          onPress={() => goToSummary(smoke, drink)}
         >
           <Text style={styles.nextText}>
-            {isAnySelected
-              ? 'Next'
-              : "I don't smoke or drink"}
+            {isAnySelected ? 'Next' : "I don't smoke or drink"}
           </Text>
-          <Feather
-            name="arrow-right"
-            size={18}
-            color="#000"
-          />
+          <Feather name="arrow-right" size={18} color="#000" />
         </Pressable>
       </View>
     </View>
   );
 }
+
+/* ---------------------------------------------------
+   🎨 Styles (UNCHANGED)
+--------------------------------------------------- */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
