@@ -12,6 +12,28 @@ export function useDashboardData() {
 
   useEffect(() => {
     loadToday();
+     const channel = supabase
+    .channel('dashboard-updates')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'water_logs' },
+      loadToday
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'meal_logs' },
+      loadToday
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'workout_logs' },
+      loadToday
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
   }, []);
 
   async function loadToday() {

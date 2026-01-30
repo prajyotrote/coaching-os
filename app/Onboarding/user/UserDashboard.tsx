@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   },
 
   loop: {
-    fontSize: 14,
+    fontSize: 22,
     fontWeight: '900',
     letterSpacing: 6,
   },
