@@ -49,7 +49,9 @@ export default function UserDashboard({ onLogout }: Props) {
   calories,
   workouts,
   refresh,
+  targets,
 } = useDashboardData();
+
  const radius = 80;
 const circumference = 2 * Math.PI * radius;
 
@@ -78,10 +80,26 @@ const { logWorkout, logWater, logMeal } = useHealthActions();
   ];
 
  const sideQuests = [
-  { label: 'Workouts', val: `${workouts} / 1`, percent: Math.min(100, workouts * 100), icon: Footprints },
-  { label: 'Nutrition', val: `${calories} cal`, percent: Math.min(100, calories / 2000 * 100), icon: Utensils },
-  { label: 'Water', val: `${water}ml / 3000ml`, percent: Math.min(100, water / 3000 * 100), icon: Droplets },
+  {
+    label: 'Workouts',
+    val: `${workouts} / ${targets.workoutTarget}`,
+    percent: 0,
+    icon: Footprints,
+  },
+  {
+    label: 'Nutrition',
+    val: `${calories} / ${targets.calorieTarget}`,
+    percent: Math.min(100, (calories / targets.calorieTarget) * 100),
+    icon: Utensils,
+  },
+  {
+    label: 'Water',
+    val: `${water}ml / ${targets.waterTarget}ml`,
+    percent: Math.min(100, (water / targets.waterTarget) * 100),
+    icon: Droplets,
+  },
 ];
+
 
 
   return (
@@ -212,6 +230,8 @@ const { logWorkout, logWater, logMeal } = useHealthActions();
             <View key={i} style={styles.sideCard}>
               <q.icon size={18} color="#818cf8" />
               <Text style={styles.sideVal}>{q.val}</Text>
+           
+
               <Text style={styles.sideLabel}>{q.label}</Text>
             </View>
           ))}
@@ -447,10 +467,17 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 16,
     alignItems: 'center',
-    width: 100,
+    width: 110,
   },
 
-  sideVal: { color: '#fff', fontWeight: '900', marginTop: 6 },
+  sideVal: {
+  color: '#fff',
+  fontWeight: '800',
+  marginTop: 6,
+  fontSize: 13,
+  textAlign: 'center',
+  lineHeight: 18,
+},
   sideLabel: { color: '#555', fontSize: 9 },
 
   quickRow: {

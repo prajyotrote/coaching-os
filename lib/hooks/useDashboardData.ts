@@ -10,30 +10,36 @@ export function useDashboardData() {
   const [workouts, setWorkouts] = useState(0);
   const [score, setScore] = useState(0);
 
+  // Targets (from profile)
+  const [waterTarget, setWaterTarget] = useState(3000);
+  const [calorieTarget, setCalorieTarget] = useState(2000);
+  const [workoutTarget, setWorkoutTarget] = useState(2);
+
   useEffect(() => {
     loadToday();
-     const channel = supabase
-    .channel('dashboard-updates')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'water_logs' },
-      loadToday
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'meal_logs' },
-      loadToday
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'workout_logs' },
-      loadToday
-    )
-    .subscribe();
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
+    const channel = supabase
+      .channel('dashboard-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'water_logs' },
+        loadToday
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'meal_logs' },
+        loadToday
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'workout_logs' },
+        loadToday
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   async function loadToday() {
@@ -48,14 +54,50 @@ export function useDashboardData() {
       return;
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const since = today.toISOString();
+    /* ------------------------------------
+       Load user targets from profile
+    ------------------------------------ */
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('daily_water_target,daily_calorie_target,daily_workout_target')
+      .eq('id', user.id)
+      .single();
+
+    const wTarget = profile?.daily_water_target || 3000;
+    const cTarget = profile?.daily_calorie_target || 2000;
+    const woTarget = profile?.daily_workout_target || 2;
+
+    setWaterTarget(wTarget);
+    setCalorieTarget(cTarget);
+    setWorkoutTarget(woTarget);
+
+    /* ------------------------------------
+       Today's data
+    ------------------------------------ */
+
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    const sinceIso = since.toISOString();
 
     const [waterRes, mealRes, workoutRes] = await Promise.all([
-      supabase.from('water_logs').select('ml').eq('user_id', user.id).gte('created_at', since),
-      supabase.from('meal_logs').select('calories').eq('user_id', user.id).gte('created_at', since),
-      supabase.from('workout_logs').select('id').eq('user_id', user.id).gte('created_at', since),
+      supabase
+        .from('water_logs')
+        .select('ml')
+        .eq('user_id', user.id)
+        .gte('created_at', sinceIso),
+
+      supabase
+        .from('meal_logs')
+        .select('calories')
+        .eq('user_id', user.id)
+        .gte('created_at', sinceIso),
+
+      supabase
+        .from('workout_logs')
+        .select('id')
+        .eq('user_id', user.id)
+        .gte('created_at', sinceIso),
     ]);
 
     const totalWater =
@@ -66,20 +108,22 @@ export function useDashboardData() {
 
     const workoutCount = workoutRes.data?.length || 0;
 
-    // no fake steps until Apple Health
+    // Until Apple / Google Health
     const estimatedSteps = 0;
 
-    const waterPercent = Math.min(1, totalWater / 3000);
-    const mealPercent = Math.min(1, totalCalories / 2000);
-    const workoutPercent = Math.min(1, workoutCount / 2);
+    /* ------------------------------------
+       Dynamic scoring
+    ------------------------------------ */
 
+    const waterPercent = Math.min(1, totalWater / wTarget);
+    const mealPercent = Math.min(1, totalCalories / cTarget);
+    const workoutPercent = Math.min(1, workoutCount / woTarget);
 
     const dailyScore = Math.round(
-  waterPercent * 40 +
-  mealPercent * 30 +
-  workoutPercent * 30
-);
-
+      waterPercent * 40 +
+      mealPercent * 30 +
+      workoutPercent * 30
+    );
 
     setWater(totalWater);
     setCalories(totalCalories);
@@ -98,5 +142,10 @@ export function useDashboardData() {
     workouts,
     score,
     refresh: loadToday,
+    targets: {
+      waterTarget,
+      calorieTarget,
+      workoutTarget,
+    },
   };
 }

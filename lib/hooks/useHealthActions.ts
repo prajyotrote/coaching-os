@@ -11,4 +11,9 @@ export function useHealthActions() {
     logMeal: (cal: number) => health.logMeal(userId!, cal),
     logWeight: (kg: number) => health.logWeight(userId!, kg),
   };
+function todayDate() {
+  return new Date().toISOString().split('T')[0];
+}
+
+
 }
