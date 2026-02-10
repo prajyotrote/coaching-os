@@ -9,11 +9,18 @@ export function useDashboardData() {
   const [calories, setCalories] = useState(0);
   const [workouts, setWorkouts] = useState(0);
   const [score, setScore] = useState(0);
+  const [sleep, setSleep] = useState(0);
+  const [burned, setBurned] = useState(0);
+  const [recovery, setRecovery] = useState(0);
+  const [name, setName] = useState<string | null>(null);
+
+
 
   // Targets (from profile)
   const [waterTarget, setWaterTarget] = useState(3000);
   const [calorieTarget, setCalorieTarget] = useState(2000);
   const [workoutTarget, setWorkoutTarget] = useState(2);
+  
 
   useEffect(() => {
     loadToday();
@@ -30,11 +37,19 @@ export function useDashboardData() {
         { event: '*', schema: 'public', table: 'meal_logs' },
         loadToday
       )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'steps_logs' }, loadToday)
+
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'workout_logs' },
         loadToday
       )
+      .on(
+  'postgres_changes',
+  { event: '*', schema: 'public', table: 'sleep_daily' },
+  loadToday
+)
+
       .subscribe();
 
     return () => {
@@ -42,17 +57,41 @@ export function useDashboardData() {
     };
   }, []);
 
+  async function logSteps(steps: number) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase.from('steps_logs').insert({
+    user_id: user.id,
+    steps,
+  });
+}
   async function loadToday() {
     setLoading(true);
+    
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
+    
+
     if (!user) {
       setLoading(false);
       return;
     }
+    // ----------------------------------
+// Load onboarding profile (name etc)
+// ----------------------------------
+
+const { data: onboarding } = await supabase
+  .from('user_onboarding')
+  .select('name')
+  .eq('user_id', user.id)
+  .single();
+
+setName(onboarding?.name || null);
+
 
     /* ------------------------------------
        Load user targets from profile
@@ -68,6 +107,8 @@ export function useDashboardData() {
     const cTarget = profile?.daily_calorie_target || 2000;
     const woTarget = profile?.daily_workout_target || 2;
 
+   
+
     setWaterTarget(wTarget);
     setCalorieTarget(cTarget);
     setWorkoutTarget(woTarget);
@@ -80,7 +121,7 @@ export function useDashboardData() {
     since.setHours(0, 0, 0, 0);
     const sinceIso = since.toISOString();
 
-    const [waterRes, mealRes, workoutRes] = await Promise.all([
+    const [waterRes, mealRes, workoutRes, stepsRes,] = await Promise.all([
       supabase
         .from('water_logs')
         .select('ml')
@@ -98,7 +139,30 @@ export function useDashboardData() {
         .select('id')
         .eq('user_id', user.id)
         .gte('created_at', sinceIso),
+
+         supabase.from('steps_logs').select('steps').eq('user_id', user.id).gte('created_at', sinceIso),
     ]);
+
+const now = new Date();
+const todayStr = new Date(
+  now.getFullYear(),
+  now.getMonth(),
+  now.getDate()
+)
+  .toISOString()
+  .slice(0, 10);
+
+const { data: sleepDaily, error: sleepError } = await supabase
+  .from('sleep_daily')
+  .select('*')
+  .eq('user_id', user.id)
+  .order('date', { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+console.log('🛌 sleepDaily row:', sleepDaily);
+console.log('❌ sleepDaily error:', sleepError);
+
 
     const totalWater =
       waterRes.data?.reduce((s, x) => s + (x.ml || 0), 0) || 0;
@@ -108,27 +172,81 @@ export function useDashboardData() {
 
     const workoutCount = workoutRes.data?.length || 0;
 
-    // Until Apple / Google Health
-    const estimatedSteps = 0;
+const totalSteps =
+  stepsRes.data?.reduce((s, x) => s + (x.steps || 0), 0) || 0;
+
+const totalSleep =
+  sleepDaily?.total_sleep_minutes
+    ? sleepDaily.total_sleep_minutes / 60
+    : 0;
+
+
+  // 💙 Recovery calculation
+const sleepRatio = Math.min(totalSleep / 8, 1.2); // allow small bonus
+const sleepScore = sleepRatio * 55;
+
+// Step fatigue (light)
+const stepPenalty = Math.min(totalSteps / 5000, 1) * 8;
+
+// Workout fatigue
+const workoutPenalty = Math.min(workoutCount * 15, 30);
+
+// Base recovery
+let recoveryScore = 0;
+
+if (totalSleep > 0) {
+  const sleepPercent = Math.min(1, totalSleep / 8); // 8h baseline
+  recoveryScore = Math.round(sleepPercent * 100);
+}
+
+setRecovery(recoveryScore);
+
+
+
+
+
+// 🔥 Burned calories (ACTIVE only)
+const stepsBurn = totalSteps * 0.04;
+const workoutBurn = workoutCount * 300;
+
+const burnedCalories = Math.round(stepsBurn + workoutBurn);
+
+setBurned(burnedCalories);
+
+
+setSteps(totalSteps);
+setSleep(totalSleep);
 
     /* ------------------------------------
        Dynamic scoring
     ------------------------------------ */
 
-    const waterPercent = Math.min(1, totalWater / wTarget);
-    const mealPercent = Math.min(1, totalCalories / cTarget);
-    const workoutPercent = Math.min(1, workoutCount / woTarget);
+   // 🎯 Main daily score
 
-    const dailyScore = Math.round(
-      waterPercent * 40 +
-      mealPercent * 30 +
-      workoutPercent * 30
-    );
+const hydrationScore = Math.min(1, totalWater / wTarget) * 20;
+const nutritionScore = Math.min(1, totalCalories / cTarget) * 20;
+
+// Activity = steps + workouts
+const stepActivity = Math.min(1, totalSteps / 8000); // 8k steps target
+const workoutActivity = Math.min(1, workoutCount / woTarget);
+
+const activityScore = ((stepActivity + workoutActivity) / 2) * 30;
+
+// Recovery already 0–100
+const recoveryScorePart = (recoveryScore / 100) * 30;
+
+const dailyScore = Math.round(
+  hydrationScore +
+  nutritionScore +
+  activityScore +
+  recoveryScorePart
+);
+
 
     setWater(totalWater);
     setCalories(totalCalories);
     setWorkouts(workoutCount);
-    setSteps(estimatedSteps);
+   // setSteps(estimatedSteps);
     setScore(dailyScore);
 
     setLoading(false);
@@ -136,11 +254,15 @@ export function useDashboardData() {
 
   return {
     loading,
+    name,
+    sleep,
     steps,
+    burned,
     water,
     calories,
     workouts,
     score,
+    recovery,
     refresh: loadToday,
     targets: {
       waterTarget,

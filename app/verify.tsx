@@ -129,12 +129,14 @@ const inputs = useRef<Array<TextInput | null>>([]);
       const { error: insertError } = await supabase
         .from('profiles')
         .insert({
-          id: user.id,
-          phone,
-          role: selectedRole,
-          status,
-          onboarding_step: 0,
-        });
+  id: user.id,
+  phone,
+  role: selectedRole,
+  status,
+  onboarding_step: 0,
+  onboarding_completed: false,
+});
+
 
       if (insertError) {
         alert('Failed to create profile. Please try again.');

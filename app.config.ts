@@ -6,13 +6,17 @@ const config: ExpoConfig = {
 
   ios: {
     bundleIdentifier: "com.anonymous.mobile",
+    userInterfaceStyle: "dark",
   },
 
   android: {
     package: "com.anonymous.mobile",
   },
 
-  extra: {},
+  plugins: [
+  
+    "expo-notifications"
+  ],
 };
 
 export default config;
