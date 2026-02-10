@@ -7,10 +7,6 @@ import {
   Pressable,
 } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import {
-  calculateBedtimeVariance,
-  sleepConsistencyInsight,
-} from '@/lib/sleep/analytics';
 import SleepHistory from '@/components/sleep/SleepHistory';
 import {
   ArrowLeft,
@@ -24,7 +20,7 @@ import {
   Check,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getSleepToday } from '@/lib/sleep/queries';
+import { getSleepToday, getSleepPreferences, upsertSleepPreferences } from '@/lib/sleep/queries';
 import type { SleepDaily } from '@/lib/sleep/types';
 import { supabase } from '@/lib/supabase';
 import { upsertSleepReflection } from '@/lib/sleep/queries';
@@ -41,6 +37,8 @@ type SleepSchedule = {
   start: string;
   end: string;
   target: string;
+  reminderEnabled: boolean;
+  reminderOffsetMinutes: number;
 };
 
 export default function Sleep() {
@@ -72,6 +70,41 @@ export default function Sleep() {
   })();
 }, [userId]);
 
+  useEffect(() => {
+    if (!userId) return;
+
+    (async () => {
+      try {
+        const prefs = await getSleepPreferences(userId);
+        if (!prefs) return;
+
+        const normalizeTime = (t?: string | null) =>
+          t ? t.slice(0, 5) : undefined;
+
+        const preferred =
+          prefs.preferred_sleep_minutes != null
+            ? `${Math.floor(prefs.preferred_sleep_minutes / 60)}h ${
+                prefs.preferred_sleep_minutes % 60
+              }m`
+            : undefined;
+
+        setSchedule(prev => ({
+          ...prev,
+          start: normalizeTime(prefs.bedtime) ?? prev.start,
+          end: normalizeTime(prefs.wake_time) ?? prev.end,
+          reminderEnabled:
+            prefs.reminder_enabled ?? prev.reminderEnabled,
+          reminderOffsetMinutes:
+            prefs.reminder_offset_minutes ??
+            prev.reminderOffsetMinutes,
+          target: preferred ?? prev.target,
+        }));
+      } catch (e) {
+        console.error('Failed to fetch sleep preferences', e);
+      }
+    })();
+  }, [userId]);
+
 
   /* ---------------- STATE ---------------- */
   const [view, setView] = useState<ViewMode>('Today');
@@ -87,6 +120,8 @@ export default function Sleep() {
     start: '23:45',
     end: '07:00',
     target: '8h 0m',
+    reminderEnabled: false,
+    reminderOffsetMinutes: 30,
   });
 
   /* ---------------- MOCK DATA (replace later) ---------------- */
@@ -121,6 +156,16 @@ export default function Sleep() {
   };
 }, [sleepToday]);
 
+  const formatScheduleTime = (value: string) => {
+    const [h, m] = value.split(':').map(Number);
+    const d = new Date();
+    d.setHours(h || 0, m || 0, 0, 0);
+    return d.toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
 async function loadSleepHistory(range: 'Day' | 'Week' | 'Month' | '6M') {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
@@ -133,19 +178,10 @@ async function loadSleepHistory(range: 'Day' | 'Week' | 'Month' | '6M') {
   if (range === '6M') fromDate.setMonth(fromDate.getMonth() - 6);
 
   const fromStr = fromDate.toISOString().slice(0, 10);
-  const bedtimeVariance = useMemo(() => {
-  if (!sleepHistory.length) return 0;
-  return calculateBedtimeVariance(sleepHistory);
-}, [sleepHistory]);
-
-const consistency = useMemo(() => {
-  return sleepConsistencyInsight(bedtimeVariance);
-}, [bedtimeVariance]);
-
 
   const { data } = await supabase
     .from('sleep_daily')
-    .select('date, total_sleep_minutes')
+    .select('date, total_sleep_minutes, bedtime')
     .eq('user_id', user.id)
     .gte('date', fromStr)
     .order('date', { ascending: true });
@@ -450,14 +486,18 @@ const sleepStageData = useMemo(() => {
 
               <View style={styles.windowTimes}>
                 <View>
-                  <Text style={styles.windowTime}>{schedule.start}</Text>
+                  <Text style={styles.windowTime}>
+                    {formatScheduleTime(schedule.start)}
+                  </Text>
                   <Text style={styles.windowLabel}>Bedtime</Text>
                 </View>
 
                 <View style={styles.windowLine} />
 
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.windowTime}>{schedule.end}</Text>
+                  <Text style={styles.windowTime}>
+                    {formatScheduleTime(schedule.end)}
+                  </Text>
                   <Text style={styles.windowLabel}>Wake</Text>
                 </View>
               </View>
@@ -539,8 +579,37 @@ const sleepStageData = useMemo(() => {
           onSave={(s: SleepSchedule) => {
             setSchedule(s);
             setShowSchedule(false);
+
+            if (!userId) return;
+            const toTimeValue = (t: string) =>
+              t.length === 5 ? `${t}:00` : t;
+
+            const preferredMinutes = (() => {
+              const [hStr, mStr] = s.target
+                .replace('m', '')
+                .split('h')
+                .map(v => v.trim());
+              const h = Number(hStr || 0);
+              const m = Number(mStr || 0);
+              return h * 60 + m;
+            })();
+
+            upsertSleepPreferences({
+              user_id: userId,
+              bedtime: toTimeValue(s.start),
+              wake_time: toTimeValue(s.end),
+              reminder_enabled: s.reminderEnabled,
+              reminder_offset_minutes: s.reminderOffsetMinutes,
+              preferred_sleep_minutes: preferredMinutes,
+            }).catch(e => {
+              console.error('Failed to save sleep preferences', e);
+            });
           }}
           onClose={() => setShowSchedule(false)}
+          initialStart={schedule.start}
+          initialEnd={schedule.end}
+          initialReminderEnabled={schedule.reminderEnabled}
+          initialReminderOffsetMinutes={schedule.reminderOffsetMinutes}
         />
       </BottomSheet>
     </View>
