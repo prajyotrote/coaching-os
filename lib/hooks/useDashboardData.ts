@@ -7,6 +7,9 @@ export function useDashboardData() {
   const [steps, setSteps] = useState(0);
   const [water, setWater] = useState(0);
   const [calories, setCalories] = useState(0);
+  const [protein, setProtein] = useState(0);
+  const [carbs, setCarbs] = useState(0);
+  const [fat, setFat] = useState(0);
   const [workouts, setWorkouts] = useState(0);
   const [score, setScore] = useState(0);
   const [sleep, setSleep] = useState(0);
@@ -35,6 +38,16 @@ export function useDashboardData() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'meal_logs' },
+        loadToday
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'meal_entries' },
+        loadToday
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'meal_items' },
         loadToday
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'steps_logs' }, loadToday)
@@ -130,7 +143,7 @@ setName(onboarding?.name || null);
 
       supabase
         .from('meal_logs')
-        .select('calories')
+        .select('calories, protein, carbs, fat')
         .eq('user_id', user.id)
         .gte('created_at', sinceIso),
 
@@ -169,6 +182,12 @@ console.log('❌ sleepDaily error:', sleepError);
 
     const totalCalories =
       mealRes.data?.reduce((s, x) => s + (x.calories || 0), 0) || 0;
+    const totalProtein =
+      mealRes.data?.reduce((s, x) => s + (Number(x.protein) || 0), 0) || 0;
+    const totalCarbs =
+      mealRes.data?.reduce((s, x) => s + (Number(x.carbs) || 0), 0) || 0;
+    const totalFat =
+      mealRes.data?.reduce((s, x) => s + (Number(x.fat) || 0), 0) || 0;
 
     const workoutCount = workoutRes.data?.length || 0;
 
@@ -245,6 +264,9 @@ const dailyScore = Math.round(
 
     setWater(totalWater);
     setCalories(totalCalories);
+    setProtein(Math.round(totalProtein));
+    setCarbs(Math.round(totalCarbs));
+    setFat(Math.round(totalFat));
     setWorkouts(workoutCount);
    // setSteps(estimatedSteps);
     setScore(dailyScore);
@@ -263,6 +285,11 @@ const dailyScore = Math.round(
     workouts,
     score,
     recovery,
+    macros: {
+      protein,
+      carbs,
+      fat,
+    },
     refresh: loadToday,
     targets: {
       waterTarget,

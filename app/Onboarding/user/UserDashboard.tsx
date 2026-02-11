@@ -12,7 +12,7 @@ import MaskedView from '@react-native-masked-view/masked-view';
 import { useDashboardData } from '@/lib/hooks/useDashboardData';
 import { useHealthActions } from '@/lib/hooks/useHealthActions';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 import Animated, {
   useSharedValue,
@@ -67,9 +67,16 @@ export default function UserDashboard({ onLogout }: Props) {
     water,
     calories,
     workouts,
+    macros,
     refresh,
     targets,
   } = useDashboardData();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   function getGreeting() {
     
@@ -115,23 +122,90 @@ const animatedWaterProps = useAnimatedProps(() => ({
 
   const { logWorkout, logWater, logMeal } = useHealthActions();
 
-  // ---------------- STON Intelligence (temporary logic)
-// ----------------
+  // ---------------- STON Intelligence (v2)
+  // ----------------
+  type CoachActionType = 'water' | 'meal' | 'workout' | null;
 
-let coachMessage = 'Stay consistent today 💪';
-let coachAction: 'water' | 'meal' | 'workout' | null = null;
+  const hour = new Date().getHours();
+  const waterPct = targets.waterTarget
+    ? water / targets.waterTarget
+    : 0;
+  const caloriePct = targets.calorieTarget
+    ? calories / targets.calorieTarget
+    : 0;
+  const workoutPct = targets.workoutTarget
+    ? workouts / targets.workoutTarget
+    : 0;
 
-// simple rules (can be replaced by backend later)
-if (water < targets.waterTarget * 0.4) {
-  coachMessage = 'You are dehydrated — drink 500ml now 💧';
-  coachAction = 'water';
-} else if (calories < targets.calorieTarget * 0.4) {
-  coachMessage = 'Log your next meal 🍽️';
-  coachAction = 'meal';
-} else if (workouts === 0) {
-  coachMessage = 'Time to train — start your workout 💪';
-  coachAction = 'workout';
-}
+  const candidates: Array<{
+    priority: number;
+    message: string;
+    sub: string;
+    action: CoachActionType;
+    amount?: number;
+    cta?: string;
+  }> = [];
+
+  if (waterPct < 0.35) {
+    candidates.push({
+      priority: 1,
+      message: 'Hydration is low — drink 500ml now',
+      sub: `Water at ${Math.round(waterPct * 100)}% of goal`,
+      action: 'water',
+      amount: 500,
+      cta: 'Log 500ml',
+    });
+  }
+
+  if (hour >= 12 && caloriePct < 0.35) {
+    candidates.push({
+      priority: 2,
+      message: 'Fuel is behind — log your next meal',
+      sub: `Nutrition at ${Math.round(caloriePct * 100)}% of goal`,
+      action: 'meal',
+      amount: 400,
+      cta: 'Log 400 kcal',
+    });
+  }
+
+  if (workouts === 0 && hour >= 15) {
+    candidates.push({
+      priority: 3,
+      message: 'Training window is open — start a workout',
+      sub: 'A short session keeps momentum high',
+      action: 'workout',
+      cta: 'Start workout',
+    });
+  }
+
+  if (sleep < 6) {
+    candidates.push({
+      priority: 4,
+      message: 'Low sleep recovery — keep intensity light today',
+      sub: 'Focus on mobility + technique work',
+      action: null,
+    });
+  }
+
+  if (steps < 3000 && hour >= 16) {
+    candidates.push({
+      priority: 5,
+      message: 'Movement is low — take a 15‑min walk',
+      sub: 'Quick wins still count today',
+      action: null,
+    });
+  }
+
+  if (candidates.length === 0) {
+    candidates.push({
+      priority: 99,
+      message: 'Strong day so far — protect your streak',
+      sub: 'Keep hydration and meals consistent',
+      action: null,
+    });
+  }
+
+  const coach = candidates.sort((a, b) => a.priority - b.priority)[0];
 
 
   const metrics = [
@@ -245,6 +319,12 @@ if (water < targets.waterTarget * 0.4) {
      if (m.label === 'Sleep') {
     router.push('/Sleep');
   }
+    if (m.label === 'Burned') {
+      router.push('/Kcal');
+    }
+    if (m.label === 'Recovery') {
+      router.push('/Recovery');
+    }
   }} 
 >
               <View style={styles.metricTop}>
@@ -294,7 +374,12 @@ if (water < targets.waterTarget * 0.4) {
 
 
         {/* TRACK FOOD */}
-<View style={styles.foodCard}>
+<Pressable
+  style={styles.foodCard}
+  onPress={() => {
+    router.push('/Food');
+  }}
+>
   <View style={styles.foodHeader}>
     <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
   <View style={styles.foodRingWrap}>
@@ -325,7 +410,7 @@ if (water < targets.waterTarget * 0.4) {
       {calories} of {targets.calorieTarget} kcal
     </Text>
   </View>
-</View>
+    </View>
 
 
     <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -335,9 +420,8 @@ if (water < targets.waterTarget * 0.4) {
 
   <Pressable
     style={styles.iconPrimary}
-    onPress={async () => {
-      await logMeal(400);
-      await refresh();
+    onPress={() => {
+      router.push('/Food');
     }}
   >
     <Plus size={18} color="#000" />
@@ -354,10 +438,9 @@ if (water < targets.waterTarget * 0.4) {
 
 <View style={styles.macroRow}>
   {[
-    { label: 'PROTEIN', val: '120g', color: '#34d399', flex: 0.8 },
-    { label: 'CARBS', val: '150g', color: '#fbbf24', flex: 0.8 },
-    { label: 'FATS', val: '45g', color: '#818cf8', flex: 0.8 },
-    { label: 'FIBER', val: '15g', color: '#fb7185', flex: 0.8 },
+    { label: 'PROTEIN', val: `${macros?.protein ?? 0}g`, color: '#34d399', flex: Math.min(1, (macros?.protein ?? 0) / 120) },
+    { label: 'CARBS', val: `${macros?.carbs ?? 0}g`, color: '#fbbf24', flex: Math.min(1, (macros?.carbs ?? 0) / 200) },
+    { label: 'FATS', val: `${macros?.fat ?? 0}g`, color: '#818cf8', flex: Math.min(1, (macros?.fat ?? 0) / 70) },
   ].map(m => (
     <View key={m.label} style={{ flex: 1 }}>
       <Text style={styles.macroLabel}>{m.label}</Text>
@@ -379,7 +462,7 @@ if (water < targets.waterTarget * 0.4) {
     </View>
   ))}
 </View>
-</View>
+</Pressable>
 
         {/* SIDE QUESTS */}
         {/* HYDRATION BOOST */}
@@ -472,15 +555,15 @@ if (water < targets.waterTarget * 0.4) {
 <Pressable
   style={styles.intelCard}
   onPress={async () => {
-    if (coachAction === 'water') {
-      await logWater(500);
+    if (coach.action === 'water') {
+      await logWater(coach.amount ?? 500);
       refresh();
     }
-    if (coachAction === 'meal') {
-      await logMeal(400);
+    if (coach.action === 'meal') {
+      await logMeal(coach.amount ?? 400);
       refresh();
     }
-    if (coachAction === 'workout') {
+    if (coach.action === 'workout') {
       await logWorkout();
       refresh();
     }
@@ -494,10 +577,15 @@ if (water < targets.waterTarget * 0.4) {
 
     {/* Message */}
     <View style={{ flex: 1 }}>
-      <Text style={styles.coachMsg}>{coachMessage}</Text>
+      <Text style={styles.coachMsg}>{coach.message}</Text>
+      <Text style={styles.coachSub}>{coach.sub}</Text>
 
-      {coachAction && (
-        <Text style={styles.intelHint}>Tap to take action →</Text>
+      {coach.action && (
+        <View style={styles.coachCta}>
+          <Text style={styles.coachCtaText}>
+            {coach.cta ?? 'Tap to take action'}
+          </Text>
+        </View>
       )}
     </View>
   </View>
@@ -852,6 +940,25 @@ macroFill: {
   coachAvatar: { width: 42, height: 42, borderRadius: 21 },
   coachName: { color: '#818cf8', fontSize: 10 },
   coachMsg: { color: '#ddd', fontWeight: '700' },
+  coachSub: {
+    color: '#6B7280',
+    fontSize: 12,
+    marginTop: 6,
+  },
+  coachCta: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    backgroundColor: '#1F1F1F',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  coachCtaText: {
+    color: '#E5E7EB',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
 
   bottomNav: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, backgroundColor: '#050505', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
   centerBtn: { backgroundColor: '#6366f1', padding: 14, borderRadius: 20, marginBottom: 30 },
