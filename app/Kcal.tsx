@@ -172,13 +172,19 @@ export default function Kcal() {
 
   return (
     <View style={styles.container}>
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={['#0f0f1a', '#000000', '#050510']}
+        style={StyleSheet.absoluteFill}
+      />
+
       {/* HEADER */}
       <View style={styles.header}>
         <Pressable style={styles.iconBtn} onPress={() => router.back()}>
-          <ArrowLeft size={18} color="#fff" />
+          <ArrowLeft size={20} color="#fff" />
         </Pressable>
 
-        <View>
+        <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Kcal Burn</Text>
           <Text style={styles.headerSub}>Daily energy burn</Text>
         </View>
@@ -187,7 +193,7 @@ export default function Kcal() {
           if (view === 'History') loadHistory();
           else loadToday();
         }}>
-          <RefreshCw size={18} color="#9CA3AF" />
+          <RefreshCw size={18} color="#9ca3af" />
         </Pressable>
       </View>
 
@@ -231,46 +237,64 @@ export default function Kcal() {
             </View>
 
             {/* BREAKDOWN */}
+            <Text style={styles.sectionTitle}>BURN BREAKDOWN</Text>
             <View style={styles.breakdownRow}>
               <View style={styles.breakCard}>
-                <View style={styles.breakIcon}>
-                  <Footprints size={16} color="#60A5FA" />
-                </View>
-                <Text style={styles.breakValue}>
-                  {today ? today.stepsKcal : '--'} kcal
-                </Text>
-                <Text style={styles.breakLabel}>From steps</Text>
+                <LinearGradient
+                  colors={['rgba(96,165,250,0.15)', 'rgba(96,165,250,0.05)']}
+                  style={styles.breakCardInner}
+                >
+                  <View style={styles.breakIcon}>
+                    <Footprints size={18} color="#60A5FA" />
+                  </View>
+                  <Text style={styles.breakValue}>
+                    {today ? today.stepsKcal : '--'}
+                  </Text>
+                  <Text style={styles.breakUnit}>kcal</Text>
+                  <Text style={styles.breakLabel}>From steps</Text>
+                </LinearGradient>
               </View>
 
               <View style={styles.breakCard}>
-                <View style={styles.breakIcon}>
-                  <Dumbbell size={16} color="#A78BFA" />
-                </View>
-                <Text style={styles.breakValue}>
-                  {today ? today.workoutKcal : '--'} kcal
-                </Text>
-                <Text style={styles.breakLabel}>From workouts</Text>
+                <LinearGradient
+                  colors={['rgba(167,139,250,0.15)', 'rgba(167,139,250,0.05)']}
+                  style={styles.breakCardInner}
+                >
+                  <View style={styles.breakIcon}>
+                    <Dumbbell size={18} color="#A78BFA" />
+                  </View>
+                  <Text style={styles.breakValue}>
+                    {today ? today.workoutKcal : '--'}
+                  </Text>
+                  <Text style={styles.breakUnit}>kcal</Text>
+                  <Text style={styles.breakLabel}>From workouts</Text>
+                </LinearGradient>
               </View>
             </View>
 
             {/* COACH INSIGHT */}
             {todayInsight && (
-              <LinearGradient
-                colors={['#0F0F0F', '#0A0A0A']}
-                style={styles.insightCard}
-              >
-                <Text style={styles.insightTitle}>
-                  {todayInsight.title}
-                </Text>
-                <Text style={styles.insightMeaning}>
-                  {todayInsight.meaning}
-                </Text>
-                <View style={styles.actionPill}>
-                  <Text style={styles.actionText}>
-                    {todayInsight.action}
-                  </Text>
+              <>
+                <Text style={styles.sectionTitle}>COACH INSIGHT</Text>
+                <View style={styles.insightCard}>
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
+                    style={styles.insightInner}
+                  >
+                    <Text style={styles.insightTitle}>
+                      {todayInsight.title}
+                    </Text>
+                    <Text style={styles.insightMeaning}>
+                      {todayInsight.meaning}
+                    </Text>
+                    <View style={styles.actionPill}>
+                      <Text style={styles.actionText}>
+                        {todayInsight.action}
+                      </Text>
+                    </View>
+                  </LinearGradient>
                 </View>
-              </LinearGradient>
+              </>
             )}
           </>
         ) : (
@@ -288,22 +312,24 @@ export default function Kcal() {
             </View>
 
             {historyInsight && (
-              <LinearGradient
-                colors={['#0F0F0F', '#0A0A0A']}
-                style={styles.insightCard}
-              >
-                <Text style={styles.insightTitle}>
-                  {historyInsight.title}
-                </Text>
-                {historyInsight.evidence && (
-                  <Text style={styles.insightEvidence}>
-                    {historyInsight.evidence}
+              <View style={styles.insightCard}>
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
+                  style={styles.insightInner}
+                >
+                  <Text style={styles.insightTitle}>
+                    {historyInsight.title}
                   </Text>
-                )}
-                <Text style={styles.insightMeaning}>
-                  {historyInsight.meaning}
-                </Text>
-              </LinearGradient>
+                  {historyInsight.evidence && (
+                    <Text style={styles.insightEvidence}>
+                      {historyInsight.evidence}
+                    </Text>
+                  )}
+                  <Text style={styles.insightMeaning}>
+                    {historyInsight.meaning}
+                  </Text>
+                </LinearGradient>
+              </View>
             )}
 
             {summary && (
@@ -360,125 +386,155 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
 
   header: {
-    paddingTop: 56,
-    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingHorizontal: 20,
     paddingBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
 
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: '#111',
+  headerCenter: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
 
-  headerTitle: { color: '#fff', fontSize: 17, fontWeight: '600' },
-  headerSub: { color: '#6B7280', fontSize: 12, marginTop: 2 },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
 
-  tabsWrap: { marginTop: 12, paddingHorizontal: 24 },
+  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '800', textAlign: 'center' },
+  headerSub: { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2, textAlign: 'center' },
 
-  scroll: { paddingHorizontal: 24, paddingBottom: 120 },
+  tabsWrap: { marginTop: 16, paddingHorizontal: 20 },
 
-  hero: { alignItems: 'center', marginTop: 26, marginBottom: 18 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 120 },
 
-  heroBadge: { flexDirection: 'row', gap: 6, marginBottom: 10 },
+  hero: { alignItems: 'center', marginTop: 24, marginBottom: 20 },
+
+  heroBadge: { flexDirection: 'row', gap: 6, marginBottom: 12 },
 
   heroBadgeText: {
     color: '#FBBF24',
-    fontSize: 11,
-    letterSpacing: 1,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
 
-  heroSub: { color: '#6B7280', marginTop: 6, fontSize: 13 },
+  heroSub: { color: 'rgba(255,255,255,0.4)', marginTop: 8, fontSize: 13 },
 
   streakRow: {
-    backgroundColor: '#0F0F0F',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-    marginBottom: 18,
+    borderColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 20,
   },
-  streakLabel: { color: '#6B7280', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
-  streakValue: { color: '#fff', fontSize: 15, fontWeight: '700', marginTop: 4 },
+  streakLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
+  streakValue: { color: '#fff', fontSize: 16, fontWeight: '800', marginTop: 6 },
+
+  sectionTitle: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginTop: 8,
+    marginBottom: 12,
+  },
 
   breakdownRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 8,
   },
 
   breakCard: {
     flex: 1,
-    backgroundColor: '#0F0F0F',
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+
+  breakCardInner: {
+    padding: 16,
+    minHeight: 140,
   },
 
   breakIcon: {
-    width: 30,
-    height: 30,
+    width: 36,
+    height: 36,
     borderRadius: 12,
-    backgroundColor: '#0B1220',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
 
-  breakValue: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  breakLabel: { color: '#6B7280', fontSize: 12, marginTop: 4 },
+  breakValue: { color: '#fff', fontSize: 28, fontWeight: '900' },
+  breakUnit: { color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: '600', marginTop: 2 },
+  breakLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 8 },
 
   insightCard: {
-    borderRadius: 26,
-    padding: 20,
-    marginBottom: 24,
+    borderRadius: 24,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 20,
   },
 
-  insightTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  insightEvidence: { color: '#FBBF24', fontSize: 24, fontWeight: '800', marginTop: 6 },
-  insightMeaning: { color: '#9CA3AF', fontSize: 13, marginTop: 8, lineHeight: 18 },
+  insightInner: {
+    padding: 20,
+  },
+
+  insightTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  insightEvidence: { color: '#FBBF24', fontSize: 28, fontWeight: '900', marginTop: 8 },
+  insightMeaning: { color: 'rgba(255,255,255,0.5)', fontSize: 13, marginTop: 10, lineHeight: 20 },
 
   actionPill: {
     alignSelf: 'flex-start',
-    backgroundColor: '#1F2937',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginTop: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginTop: 14,
   },
-  actionText: { color: '#E5E7EB', fontSize: 12, fontWeight: '600' },
+  actionText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
-  chartWrap: { marginVertical: 26 },
+  chartWrap: { marginVertical: 24 },
 
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    marginBottom: 20,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
 
   summaryItem: { alignItems: 'center', flex: 1 },
-  summaryLabel: { color: '#6B7280', fontSize: 10, letterSpacing: 1 },
-  summaryValue: { color: '#fff', fontSize: 14, fontWeight: '700', marginTop: 6 },
+  summaryLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+  summaryValue: { color: '#fff', fontSize: 16, fontWeight: '900', marginTop: 6 },
 
   sourceRow: { flexDirection: 'row', gap: 12 },
   sourcePill: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
-  sourceLabel: { color: '#6B7280', fontSize: 11 },
-  sourceValue: { color: '#E5E7EB', fontSize: 14, fontWeight: '700', marginTop: 4 },
+  sourceLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '600' },
+  sourceValue: { color: '#fff', fontSize: 15, fontWeight: '800', marginTop: 4 },
 });

@@ -8,8 +8,9 @@ import {
   TextInput,
   Image,
 } from 'react-native';
-import { ArrowLeft, Camera, MoreVertical, Search, Sparkles, Utensils } from 'lucide-react-native';
+import { ArrowLeft, Camera, ChevronRight, MoreVertical, Plus, Search, Sparkles, TrendingUp, Utensils } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import BottomSheet from '@/components/BottomSheet';
 import { FoodItem, searchFoods } from '@/logic/food';
 import CaloriesHeroSection from '@/components/food/CaloriesHeroSection';
@@ -176,26 +177,36 @@ export default function Food() {
 
   return (
     <View style={styles.container}>
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={['#0f0f1a', '#000000', '#050510']}
+        style={StyleSheet.absoluteFill}
+      />
+
       {/* HEADER */}
       <View style={styles.header}>
         <Pressable style={styles.iconBtn} onPress={() => router.back()}>
-          <ArrowLeft size={18} color="#fff" />
+          <ArrowLeft size={20} color="#fff" />
         </Pressable>
-        <Text style={styles.title}>Calories</Text>
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.title}>Nutrition</Text>
+          <Text style={styles.subtitle}>Track your meals</Text>
+        </View>
+
         <Pressable
           style={styles.insightsBtn}
           onPress={() => router.push('/FoodInsights')}
         >
-          <Text style={styles.insightsText}>View insights</Text>
+          <TrendingUp size={16} color="#a78bfa" />
         </Pressable>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scroll}
-        stickyHeaderIndices={[0]}
         showsVerticalScrollIndicator={false}
       >
-        {/* SUMMARY (STICKY) */}
+        {/* SUMMARY */}
         <View style={styles.summaryWrap}>
           <CaloriesHeroSection
             caloriesConsumed={totals.calories}
@@ -208,77 +219,108 @@ export default function Food() {
           />
         </View>
 
-        {/* MEALS */}
+        {/* MEALS SECTION */}
         <View style={styles.mealsWrap}>
-          {meals.map(meal => (
-            <View key={meal.id} style={styles.mealCard}>
-              <View style={styles.mealHeader}>
-                <Text style={styles.mealTitle}>{meal.title}</Text>
-                <Text style={styles.mealCalories}>
-                  {meal.items.reduce((s, x) => s + x.calories, 0)} kcal
-                </Text>
-              </View>
+          <Text style={styles.sectionTitle}>TODAY'S MEALS</Text>
+          {meals.map((meal, mealIndex) => {
+            const mealCalories = meal.items.reduce((s, x) => s + x.calories, 0);
+            const mealColors = [
+              ['rgba(96,165,250,0.12)', 'rgba(96,165,250,0.04)'],
+              ['rgba(167,139,250,0.12)', 'rgba(167,139,250,0.04)'],
+              ['rgba(251,191,36,0.12)', 'rgba(251,191,36,0.04)'],
+            ];
+            const accentColors = ['#60a5fa', '#a78bfa', '#fbbf24'];
+            const colorIndex = mealIndex % 3;
 
-              {meal.items.length > 0 ? (
-            <View style={styles.foodList}>
-              {meal.items.slice(0, 3).map((item, idx) => (
-                    <View key={`${meal.id}-${item.id}-${idx}`} style={styles.foodRow}>
-                  <View style={styles.foodIcon}>
-                    <Utensils size={14} color="#A5B4FC" />
+            return (
+              <View key={meal.id} style={styles.mealCard}>
+                <LinearGradient
+                  colors={mealColors[colorIndex] as [string, string]}
+                  style={styles.mealCardInner}
+                >
+                  <View style={styles.mealHeader}>
+                    <View style={styles.mealTitleRow}>
+                      <View style={[styles.mealDot, { backgroundColor: accentColors[colorIndex] }]} />
+                      <Text style={styles.mealTitle}>{meal.title}</Text>
+                    </View>
+                    <View style={styles.mealCaloriesBadge}>
+                      <Text style={styles.mealCalories}>{mealCalories}</Text>
+                      <Text style={styles.mealCaloriesUnit}>kcal</Text>
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.foodName}>{item.name}</Text>
-                    <Text style={styles.foodSub}>
-                      {item.serving} • {item.calories} kcal
-                    </Text>
-                  </View>
-                  <Pressable
-                    style={styles.foodMenu}
-                    onPress={() => {
-                      setActiveItem({ mealId: meal.id, item });
-                      setItemMenuOpen(true);
-                    }}
-                  >
-                    <MoreVertical size={14} color="#94A3B8" />
-                  </Pressable>
-                </View>
-              ))}
-                  {meal.items.length > 3 && (
-                    <Text style={styles.foodMore}>
-                      +{meal.items.length - 3} more items
-                    </Text>
+
+                  {meal.items.length > 0 ? (
+                    <View style={styles.foodList}>
+                      {meal.items.slice(0, 3).map((item, idx) => (
+                        <View key={`${meal.id}-${item.id}-${idx}`} style={styles.foodRow}>
+                          <View style={[styles.foodIcon, { backgroundColor: `${accentColors[colorIndex]}20` }]}>
+                            <Utensils size={14} color={accentColors[colorIndex]} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.foodName}>{item.name}</Text>
+                            <Text style={styles.foodSub}>
+                              {item.serving} • {item.calories} kcal
+                            </Text>
+                          </View>
+                          <Pressable
+                            style={styles.foodMenu}
+                            onPress={() => {
+                              setActiveItem({ mealId: meal.id, item });
+                              setItemMenuOpen(true);
+                            }}
+                          >
+                            <MoreVertical size={14} color="rgba(255,255,255,0.4)" />
+                          </Pressable>
+                        </View>
+                      ))}
+                      {meal.items.length > 3 && (
+                        <Pressable style={styles.foodMoreBtn}>
+                          <Text style={styles.foodMore}>
+                            +{meal.items.length - 3} more items
+                          </Text>
+                          <ChevronRight size={14} color="rgba(255,255,255,0.4)" />
+                        </Pressable>
+                      )}
+                    </View>
+                  ) : (
+                    <View style={styles.mealEmpty}>
+                      <View style={[styles.mealEmptyIcon, { backgroundColor: `${accentColors[colorIndex]}15` }]}>
+                        <Utensils size={18} color={accentColors[colorIndex]} />
+                      </View>
+                      <Text style={styles.mealEmptyText}>No items logged yet</Text>
+                      <Text style={styles.mealEmptyHint}>Tap below to add food</Text>
+                    </View>
                   )}
-                </View>
-              ) : (
-                <View style={styles.mealEmpty}>
-                  <View style={styles.mealEmptyIcon}>
-                    <Utensils size={16} color="#6B7280" />
+
+                  <View style={styles.actionRow}>
+                    <Pressable style={styles.actionBtn} onPress={() => openSearch(meal.id)}>
+                      <Search size={15} color="#fff" />
+                      <Text style={styles.actionText}>Search</Text>
+                    </Pressable>
+
+                    <Pressable style={styles.actionBtn} onPress={() => openNlp(meal.id)}>
+                      <Sparkles size={15} color="#fff" />
+                      <Text style={styles.actionText}>AI Log</Text>
+                    </Pressable>
+
+                    <Pressable style={styles.actionBtn} onPress={() => openPhoto(meal.id)}>
+                      <Camera size={15} color="#fff" />
+                      <Text style={styles.actionText}>Photo</Text>
+                    </Pressable>
                   </View>
-                  <Text style={styles.mealEmptyText}>No items yet</Text>
-                </View>
-              )}
-
-              <View style={styles.actionRow}>
-                <Pressable style={styles.actionBtn} onPress={() => openSearch(meal.id)}>
-                  <Search size={16} color="#C7D2FE" />
-                  <Text style={styles.actionText}>Search Food</Text>
-                </Pressable>
-
-                <Pressable style={styles.actionBtn} onPress={() => openNlp(meal.id)}>
-                  <Sparkles size={16} color="#C7D2FE" />
-                  <Text style={styles.actionText}>Describe Food</Text>
-                </Pressable>
-
-                <Pressable style={styles.actionBtn} onPress={() => openPhoto(meal.id)}>
-                  <Camera size={16} color="#C7D2FE" />
-                  <Text style={styles.actionText}>Photo Log</Text>
-                </Pressable>
+                </LinearGradient>
               </View>
-            </View>
-          ))}
+            );
+          })}
 
           <Pressable style={styles.addMealBtn} onPress={addMeal}>
-            <Text style={styles.addMealText}>+ Add another meal</Text>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
+              style={styles.addMealBtnInner}
+            >
+              <Plus size={18} color="#a78bfa" />
+              <Text style={styles.addMealText}>Add another meal</Text>
+            </LinearGradient>
           </Pressable>
         </View>
       </ScrollView>
@@ -442,230 +484,291 @@ export default function Food() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
+
   header: {
-    paddingTop: 56,
-    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingHorizontal: 20,
     paddingBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  headerCenter: {
+    alignItems: 'center',
+  },
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: '#111',
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  title: { color: '#fff', fontSize: 17, fontWeight: '600' },
-  insightsBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#0F0F0F',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.06)',
   },
-  insightsText: { color: '#C7D2FE', fontSize: 11, fontWeight: '700' },
+  title: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  subtitle: { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 },
+  insightsBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+
   scroll: { paddingBottom: 120 },
 
   summaryWrap: {
-    paddingHorizontal: 24,
-    paddingTop: 6,
-    backgroundColor: '#000',
-  },
-  summaryWrap: {
-    backgroundColor: '#000',
+    paddingTop: 10,
   },
 
-  mealsWrap: { paddingHorizontal: 24, paddingTop: 24, gap: 18 },
-  mealCard: {
-    backgroundColor: '#0F0F0F',
-    borderRadius: 22,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+  sectionTitle: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginBottom: 14,
   },
-  mealHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
-  mealTitle: { color: '#E5E7EB', fontSize: 16, fontWeight: '700' },
-  mealCalories: { color: '#6B7280', fontSize: 13 },
-  mealEmpty: {
-    marginTop: 12,
+
+  mealsWrap: { paddingHorizontal: 20, paddingTop: 10, gap: 14 },
+
+  mealCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  mealCardInner: {
+    padding: 18,
+  },
+  mealHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  mealTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+  },
+  mealDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  mealTitle: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  mealCaloriesBadge: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 3,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  mealCalories: { color: '#fff', fontSize: 15, fontWeight: '900' },
+  mealCaloriesUnit: { color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: '600' },
+
+  mealEmpty: {
+    alignItems: 'center',
+    paddingVertical: 20,
   },
   mealEmptyIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: '#0B1220',
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 10,
   },
-  mealEmptyText: { color: '#4B5563', fontSize: 12 },
-  foodList: { marginTop: 12, gap: 10 },
-  foodRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  mealEmptyText: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '600' },
+  mealEmptyHint: { color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 4 },
+
+  foodList: { gap: 10, marginBottom: 14 },
+  foodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    padding: 10,
+    borderRadius: 14,
+  },
   foodIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
-    backgroundColor: '#0B1220',
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  foodName: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  foodSub: { color: '#6B7280', fontSize: 11, marginTop: 2 },
-  foodMore: { color: '#6B7280', fontSize: 11, marginTop: 4 },
-  foodMenu: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: '#101010',
+  foodName: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  foodSub: { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 },
+  foodMoreBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    gap: 4,
+    paddingVertical: 8,
+  },
+  foodMore: { color: 'rgba(255,255,255,0.4)', fontSize: 11 },
+  foodMenu: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  actionRow: { flexDirection: 'row', gap: 10, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
   actionBtn: {
     flex: 1,
-    backgroundColor: '#101010',
-    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
     paddingVertical: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
   },
-  actionText: { color: '#C7D2FE', fontSize: 11, fontWeight: '600' },
+  actionText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
   addMealBtn: {
-    marginTop: 4,
-    backgroundColor: '#0F0F0F',
     borderRadius: 18,
-    paddingVertical: 14,
-    alignItems: 'center',
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderStyle: 'dashed',
   },
-  addMealText: { color: '#C7D2FE', fontSize: 13, fontWeight: '700' },
+  addMealBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+  },
+  addMealText: { color: '#a78bfa', fontSize: 13, fontWeight: '700' },
 
   searchWrap: {
-    marginTop: 10,
+    marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#0F0F0F',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
-  searchInput: { color: '#fff', flex: 1, fontSize: 14 },
+  searchInput: { color: '#fff', flex: 1, fontSize: 15 },
 
-  sheetHeader: { gap: 6 },
-  sheetTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  sheetHint: { color: '#6B7280', fontSize: 12 },
+  sheetHeader: { gap: 4, marginBottom: 6 },
+  sheetTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  sheetHint: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
   sheetRow: {
-    marginTop: 10,
+    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
   },
   sheetRowMain: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   sheetAddBtn: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#a78bfa',
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  sheetCta: { color: '#93C5FD', fontWeight: '700', fontSize: 12 },
+  sheetCta: { color: '#000', fontWeight: '800', fontSize: 12 },
   basketBar: {
-    marginTop: 10,
-    backgroundColor: '#0F0F0F',
-    borderRadius: 14,
-    padding: 10,
+    marginTop: 14,
+    backgroundColor: 'rgba(167,139,250,0.15)',
+    borderRadius: 16,
+    padding: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(167,139,250,0.3)',
   },
-  basketText: { color: '#E5E7EB', fontSize: 12, fontWeight: '600' },
+  basketText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   basketBtn: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#a78bfa',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  basketBtnText: { color: '#0B0B0B', fontWeight: '800', fontSize: 12 },
+  basketBtnText: { color: '#000', fontWeight: '800', fontSize: 12 },
   nlpInput: {
-    marginTop: 12,
-    minHeight: 100,
-    backgroundColor: '#0F0F0F',
-    borderRadius: 16,
-    padding: 14,
+    marginTop: 14,
+    minHeight: 120,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 18,
+    padding: 16,
     color: '#fff',
+    fontSize: 15,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.08)',
     textAlignVertical: 'top',
   },
   sheetPrimary: {
-    marginTop: 14,
-    backgroundColor: '#93C5FD',
+    marginTop: 16,
+    backgroundColor: '#a78bfa',
     borderRadius: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
   },
-  sheetPrimaryText: { color: '#0B0B0B', fontWeight: '800', fontSize: 13 },
-  sheetNote: { color: '#6B7280', fontSize: 11, marginTop: 8 },
+  sheetPrimaryText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  sheetNote: { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 10, textAlign: 'center' },
   photoPreview: {
-    marginTop: 14,
-    borderRadius: 16,
+    marginTop: 16,
+    borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-  photoImage: { width: '100%', height: 160 },
-
-  toast: {
-    position: 'absolute',
-    bottom: 24,
-    left: 24,
-    right: 24,
-    backgroundColor: '#111',
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
   },
-  toastText: { color: '#E5E7EB', fontSize: 12, fontWeight: '600' },
+  photoImage: { width: '100%', height: 180 },
+
+  toast: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(34,197,94,0.2)',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.4)',
+  },
+  toastText: { color: '#86efac', fontSize: 13, fontWeight: '700' },
 
   sheetOption: {
     marginTop: 10,
-    backgroundColor: '#0F0F0F',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 14,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
   },
-  sheetOptionText: { color: '#E5E7EB', fontSize: 13, fontWeight: '700' },
+  sheetOptionText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   sheetOptionDanger: {
-    borderColor: 'rgba(239,68,68,0.35)',
+    backgroundColor: 'rgba(239,68,68,0.1)',
   },
-  sheetOptionDangerText: { color: '#FCA5A5' },
+  sheetOptionDangerText: { color: '#f87171' },
 });

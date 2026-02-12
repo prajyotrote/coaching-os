@@ -121,9 +121,14 @@ export default function SleepHistory({
         <Text style={styles.sectionTitle}>Sleep duration</Text>
 
         <View style={styles.avgPill}>
-          <Text style={styles.avgText}>
-            Avg: {fmt(stats.avg)}
-          </Text>
+          <LinearGradient
+            colors={['rgba(96, 165, 250, 0.18)', 'rgba(167, 139, 250, 0.08)']}
+            style={styles.avgPillGradient}
+          >
+            <Text style={styles.avgText}>
+              Avg: {fmt(stats.avg)}
+            </Text>
+          </LinearGradient>
         </View>
       </View>
 
@@ -137,17 +142,22 @@ export default function SleepHistory({
           return (
             <View key={d.date} style={styles.barItem}>
               <View style={styles.barTrack}>
-                <View
-                  style={[
-                    styles.barFill,
-                    {
-                      height: `${height}%`,
-                      backgroundColor: isActive
-                        ? '#818CF8'
-                        : '#1F2937',
-                    },
-                  ]}
-                />
+                {isActive ? (
+                  <LinearGradient
+                    colors={['#60a5fa', '#818cf8']}
+                    style={[styles.barFill, { height: `${height}%` }]}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.barFill,
+                      {
+                        height: `${height}%`,
+                        backgroundColor: 'rgba(255,255,255,0.12)',
+                      },
+                    ]}
+                  />
+                )}
               </View>
 
               <Text
@@ -227,9 +237,8 @@ function Stat({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 120,
+    paddingTop: 16,
+    paddingBottom: 80,
   },
 
   emptyText: {
@@ -239,9 +248,11 @@ const styles = StyleSheet.create({
   },
 
   range: {
-    color: '#6B7280',
-    fontSize: 13,
-    marginBottom: 18,
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 12,
+    letterSpacing: 1.2,
+    marginBottom: 14,
+    textTransform: 'uppercase',
   },
 
   headerRow: {
@@ -252,23 +263,28 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    color: '#6B7280',
+    color: 'rgba(255,255,255,0.45)',
     fontSize: 11,
-    letterSpacing: 1.4,
+    letterSpacing: 1.6,
     textTransform: 'uppercase',
   },
 
   avgPill: {
-    backgroundColor: '#111',
-    paddingHorizontal: 14,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  avgPillGradient: {
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(96, 165, 250, 0.2)',
   },
 
   avgText: {
     color: '#E5E7EB',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 
   chartWrap: {
@@ -286,7 +302,7 @@ const styles = StyleSheet.create({
   barTrack: {
     height: '100%',
     width: 8,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 6,
     justifyContent: 'flex-end',
     overflow: 'hidden',
@@ -299,25 +315,27 @@ const styles = StyleSheet.create({
 
   day: {
     marginTop: 6,
-    color: '#4B5563',
+    color: 'rgba(255,255,255,0.45)',
     fontSize: 11,
   },
 
   dayActive: {
-    color: '#818CF8',
-    fontWeight: '600',
+    color: '#A5B4FC',
+    fontWeight: '700',
   },
 
   card: {
-    borderRadius: 26,
-    padding: 20,
+    borderRadius: 24,
+    padding: 18,
     marginBottom: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(129, 140, 248, 0.18)',
   },
 
   cardTitle: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 
   cardValue: {
@@ -327,18 +345,18 @@ const styles = StyleSheet.create({
   },
 
   cardSub: {
-    color: '#9CA3AF',
+    color: 'rgba(255,255,255,0.45)',
     fontSize: 13,
   },
 
   divider: {
     height: 1,
-    backgroundColor: '#1F2937',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     marginVertical: 14,
   },
 
   cardDesc: {
-    color: '#D1D5DB',
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 14,
     lineHeight: 20,
   },
@@ -355,7 +373,7 @@ const styles = StyleSheet.create({
   },
 
   statLabel: {
-    color: '#6B7280',
+    color: 'rgba(255,255,255,0.45)',
     fontSize: 10,
     letterSpacing: 1.2,
     marginBottom: 6,

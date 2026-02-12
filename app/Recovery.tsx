@@ -165,13 +165,19 @@ export default function Recovery() {
 
   return (
     <View style={styles.container}>
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={['#0f0f1a', '#000000', '#050510']}
+        style={StyleSheet.absoluteFill}
+      />
+
       {/* HEADER */}
       <View style={styles.header}>
         <Pressable style={styles.iconBtn} onPress={() => router.back()}>
-          <ArrowLeft size={18} color="#fff" />
+          <ArrowLeft size={20} color="#fff" />
         </Pressable>
 
-        <View>
+        <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Recovery</Text>
           <Text style={styles.headerSub}>Readiness & balance</Text>
         </View>
@@ -180,7 +186,7 @@ export default function Recovery() {
           if (view === 'History') loadHistory();
           else loadToday();
         }}>
-          <RefreshCw size={18} color="#9CA3AF" />
+          <RefreshCw size={18} color="#9ca3af" />
         </Pressable>
       </View>
 
@@ -250,34 +256,54 @@ export default function Recovery() {
             </View>
 
             {/* DRIVERS */}
+            <Text style={styles.sectionTitle}>RECOVERY FACTORS</Text>
             <View style={styles.driverRow}>
-              {driverCards.map(card => (
-                <View key={card.label} style={styles.driverCard}>
-                  <Text style={styles.driverLabel}>{card.label}</Text>
-                  <Text style={styles.driverValue}>{card.value}</Text>
-                  <Text style={styles.driverSub}>{card.sub}</Text>
-                </View>
-              ))}
+              {driverCards.map((card, idx) => {
+                const colors = [
+                  ['rgba(96,165,250,0.15)', 'rgba(96,165,250,0.05)'],
+                  ['rgba(167,139,250,0.15)', 'rgba(167,139,250,0.05)'],
+                  ['rgba(251,191,36,0.15)', 'rgba(251,191,36,0.05)'],
+                ];
+                const iconColors = ['#60a5fa', '#a78bfa', '#fbbf24'];
+                return (
+                  <View key={card.label} style={styles.driverCard}>
+                    <LinearGradient
+                      colors={colors[idx] as [string, string]}
+                      style={styles.driverCardInner}
+                    >
+                      <Text style={[styles.driverLabel, { color: iconColors[idx] }]}>{card.label}</Text>
+                      <Text style={styles.driverValue}>{card.value}</Text>
+                      <Text style={styles.driverSub}>{card.sub}</Text>
+                    </LinearGradient>
+                  </View>
+                );
+              })}
             </View>
 
             {/* COACH INSIGHT */}
             {insight && (
-              <LinearGradient
-                colors={['#0F0F0F', '#0A0A0A']}
-                style={styles.insightCard}
-              >
-                <View style={styles.insightHeader}>
-                  <Sparkles size={14} color="#A3E635" />
-                  <Text style={styles.insightTitle}>{insight.title}</Text>
+              <>
+                <Text style={styles.sectionTitle}>TODAY'S GUIDANCE</Text>
+                <View style={styles.insightCard}>
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
+                    style={styles.insightInner}
+                  >
+                    <View style={styles.insightHeader}>
+                      <Sparkles size={14} color="#A3E635" />
+                      <Text style={styles.insightTitle}>{insight.title}</Text>
+                    </View>
+                    <Text style={styles.insightMeaning}>{insight.meaning}</Text>
+                    <View style={styles.actionPill}>
+                      <Text style={styles.actionText}>{insight.action}</Text>
+                    </View>
+                  </LinearGradient>
                 </View>
-                <Text style={styles.insightMeaning}>{insight.meaning}</Text>
-                <View style={styles.actionPill}>
-                  <Text style={styles.actionText}>{insight.action}</Text>
-                </View>
-              </LinearGradient>
+              </>
             )}
 
             {/* CHECK-IN */}
+            <Text style={styles.sectionTitle}>DAILY CHECK-IN</Text>
             <View
               style={[
                 styles.checkinCard,
@@ -370,17 +396,19 @@ export default function Recovery() {
             </View>
 
             {historyInsight && (
-              <LinearGradient
-                colors={['#0F0F0F', '#0A0A0A']}
-                style={styles.insightCard}
-              >
-                <Text style={styles.insightTitle}>
-                  {historyInsight.title}
-                </Text>
-                <Text style={styles.insightMeaning}>
-                  {historyInsight.meaning}
-                </Text>
-              </LinearGradient>
+              <View style={styles.insightCard}>
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
+                  style={styles.insightInner}
+                >
+                  <Text style={styles.insightTitle}>
+                    {historyInsight.title}
+                  </Text>
+                  <Text style={styles.insightMeaning}>
+                    {historyInsight.meaning}
+                  </Text>
+                </LinearGradient>
+              </View>
             )}
 
             {summary && (
@@ -410,66 +438,81 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
 
   header: {
-    paddingTop: 56,
-    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingHorizontal: 20,
     paddingBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
 
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: '#111',
+  headerCenter: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
 
-  headerTitle: { color: '#fff', fontSize: 17, fontWeight: '600' },
-  headerSub: { color: '#6B7280', fontSize: 12, marginTop: 2 },
-
-  tabsWrap: { marginTop: 12, paddingHorizontal: 24 },
-  scroll: { paddingHorizontal: 24, paddingBottom: 120 },
-
-  scoreCard: {
-    backgroundColor: '#0F0F0F',
-    borderRadius: 24,
-    padding: 20,
-    marginTop: 22,
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
+  },
+
+  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '800', textAlign: 'center' },
+  headerSub: { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2, textAlign: 'center' },
+
+  tabsWrap: { marginTop: 16, paddingHorizontal: 20 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 120 },
+
+  sectionTitle: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+
+  scoreCard: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 24,
+    padding: 20,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   scoreTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  scoreDate: { color: '#4B5563', fontSize: 11 },
-  scoreSideLabel: { color: '#6B7280', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
-  scoreMetaText: { color: '#6B7280', fontSize: 12 },
+  scoreDate: { color: 'rgba(255,255,255,0.4)', fontSize: 11 },
+  scoreSideLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
+  scoreMetaText: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
   whyWrap: {
     marginTop: 14,
-    backgroundColor: '#0B0B0B',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: 16,
-    padding: 12,
+    padding: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
   },
   whyTitle: {
-    color: '#E5E7EB',
+    color: '#fff',
     fontSize: 13,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   whyList: {
-    gap: 8,
+    gap: 10,
   },
   whyItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: 10,
   },
   whyDot: {
     width: 6,
@@ -479,131 +522,141 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   whyText: {
-    color: '#9CA3AF',
+    color: 'rgba(255,255,255,0.6)',
     fontSize: 12,
-    lineHeight: 16,
+    lineHeight: 18,
     flex: 1,
   },
-  ringWrap: { marginTop: 18, alignItems: 'center' },
+  ringWrap: { marginTop: 20, alignItems: 'center' },
   readinessPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 999,
     borderWidth: 1,
   },
   readinessPillCorner: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 999,
     borderWidth: 1,
   },
-  readinessText: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+  readinessText: { fontSize: 11, fontWeight: '800', letterSpacing: 1 },
 
-  driverRow: { flexDirection: 'row', gap: 12, marginTop: 18 },
+  driverRow: { flexDirection: 'row', gap: 10 },
   driverCard: {
     flex: 1,
-    backgroundColor: '#0F0F0F',
     borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    overflow: 'hidden',
   },
-  driverLabel: { color: '#6B7280', fontSize: 11, letterSpacing: 1 },
-  driverValue: { color: '#fff', fontSize: 16, fontWeight: '700', marginTop: 6 },
-  driverSub: { color: '#6B7280', fontSize: 11, marginTop: 6 },
+  driverCardInner: {
+    padding: 14,
+    minHeight: 100,
+  },
+  driverLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' },
+  driverValue: { color: '#fff', fontSize: 18, fontWeight: '900', marginTop: 8 },
+  driverSub: { color: 'rgba(255,255,255,0.4)', fontSize: 10, marginTop: 6 },
 
   insightCard: {
     borderRadius: 24,
-    padding: 18,
-    marginTop: 18,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  insightInner: {
+    padding: 20,
   },
   insightHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  insightTitle: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  insightMeaning: { color: '#9CA3AF', fontSize: 13, marginTop: 8, lineHeight: 18 },
+  insightTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  insightMeaning: { color: 'rgba(255,255,255,0.5)', fontSize: 13, marginTop: 10, lineHeight: 20 },
   actionPill: {
     alignSelf: 'flex-start',
-    backgroundColor: '#1F2937',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginTop: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginTop: 14,
   },
-  actionText: { color: '#E5E7EB', fontSize: 12, fontWeight: '600' },
+  actionText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
   checkinCard: {
-    backgroundColor: '#0F0F0F',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 22,
-    padding: 16,
-    marginTop: 18,
+    padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.06)',
   },
-  checkinHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  checkinTitle: { color: '#E5E7EB', fontSize: 14, fontWeight: '600' },
-  checkinRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  checkinHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  checkinTitle: { color: '#fff', fontSize: 14, fontWeight: '700', flex: 1 },
+  checkinRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   checkinPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#111',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
   },
   checkinPillActive: {
-    backgroundColor: '#1F2937',
+    backgroundColor: 'rgba(96,165,250,0.2)',
     borderColor: '#60A5FA',
   },
-  checkinText: { color: '#9CA3AF', fontSize: 12, fontWeight: '600' },
-  checkinTextActive: { color: '#E5E7EB' },
-  checkinHint: { color: '#6B7280', fontSize: 11, marginTop: 10 },
+  checkinText: { color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: '600' },
+  checkinTextActive: { color: '#fff' },
+  checkinHint: { color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 12 },
   checkinCardDone: {
-    borderColor: '#22C55E33',
-    backgroundColor: '#0B1220',
+    borderColor: 'rgba(34,197,94,0.3)',
+    backgroundColor: 'rgba(34,197,94,0.08)',
   },
   checkinDone: {
     paddingVertical: 6,
   },
   checkinDoneText: {
-    color: '#A7F3D0',
+    color: '#86efac',
     fontSize: 12,
     lineHeight: 18,
   },
   checkinSubmitMini: {
-    marginLeft: 'auto',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#93C5FD',
+    borderRadius: 10,
+    backgroundColor: '#60A5FA',
   },
   checkinSubmitMiniDisabled: {
-    backgroundColor: '#1F2937',
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   checkinSubmitMiniText: {
-    color: '#111',
+    color: '#000',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   checkinSubmit: {
-    marginTop: 12,
-    backgroundColor: '#93C5FD',
+    marginTop: 14,
+    backgroundColor: '#60A5FA',
     borderRadius: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   checkinSubmitDisabled: {
-    backgroundColor: '#1F2937',
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   checkinSubmitText: {
-    color: '#111',
-    fontSize: 12,
-    fontWeight: '700',
+    color: '#000',
+    fontSize: 13,
+    fontWeight: '800',
   },
 
-  chartWrap: { marginVertical: 26 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 18 },
+  chartWrap: { marginVertical: 24 },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
   summaryItem: { alignItems: 'center', flex: 1 },
-  summaryLabel: { color: '#6B7280', fontSize: 10, letterSpacing: 1 },
-  summaryValue: { color: '#fff', fontSize: 14, fontWeight: '700', marginTop: 6 },
+  summaryLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+  summaryValue: { color: '#fff', fontSize: 16, fontWeight: '900', marginTop: 6 },
 });

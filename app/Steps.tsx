@@ -6,10 +6,9 @@ import {
   Pressable,
   ScrollView,
 } from 'react-native';
-import { ArrowLeft, RefreshCw } from 'lucide-react-native';
+import { ArrowLeft, RefreshCw, Footprints, Activity, Layers } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Footprints, Activity, Layers } from 'lucide-react-native';
 
 import StepsRing from '@/components/ui/StepsRing';
 import StepsHistory from '../components/steps/StepsHistory';
@@ -65,19 +64,25 @@ export default function Steps() {
 
   return (
     <View style={styles.container}>
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={['#0f0f1a', '#000000', '#050510']}
+        style={StyleSheet.absoluteFill}
+      />
+
       {/* HEADER */}
       <View style={styles.header}>
-        <Pressable style={styles.icon} onPress={() => router.back()}>
-          <ArrowLeft size={18} color="#fff" />
+        <Pressable style={styles.iconBtn} onPress={() => router.back()}>
+          <ArrowLeft size={20} color="#fff" />
         </Pressable>
 
-        <View>
+        <View style={styles.headerCenter}>
           <Text style={styles.title}>Steps</Text>
           <Text style={styles.sync}>Sync completed ✓</Text>
         </View>
 
-        <Pressable style={styles.icon}>
-          <RefreshCw size={18} color="#aaa" />
+        <Pressable style={styles.iconBtn}>
+          <RefreshCw size={18} color="#9ca3af" />
         </Pressable>
       </View>
 
@@ -89,7 +94,7 @@ export default function Steps() {
             onPress={() => setTab(t as any)}
             style={[styles.tab, tab === t && styles.tabActive]}
           >
-            <Text style={styles.tabText}>
+            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
               {t === 'today' ? 'Today' : 'History'}
             </Text>
           </Pressable>
@@ -124,12 +129,13 @@ export default function Steps() {
           />
 
           {/* BREAKDOWN */}
+          <Text style={styles.sectionTitle}>ACTIVITY BREAKDOWN</Text>
           <View style={styles.breakRow}>
             <Break
               label="WALKING"
               val={today?.walking_steps ?? 0}
               icon={Footprints}
-              color="#8b5cf6"
+              color="#a78bfa"
             />
             <Break
               label="RUNNING"
@@ -141,7 +147,7 @@ export default function Steps() {
               label="OTHER"
               val={today?.other_steps ?? 0}
               icon={Layers}
-              color="#666"
+              color="#6b7280"
             />
           </View>
 
@@ -150,24 +156,30 @@ export default function Steps() {
           </Text>
 
           {/* DAILY INSIGHTS */}
-          <LinearGradient
-            colors={['#141414', '#0b0b0b']}
-            style={styles.insightCard}
-          >
-            <Text style={styles.insightTitle}>⚡ Daily Insights</Text>
+          <Text style={styles.sectionTitle}>DAILY INSIGHTS</Text>
+          <View style={styles.insightCard}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
+              style={styles.insightInner}
+            >
+              <View style={styles.insightRow}>
+                <Insight label="Active" val={`${today?.active_minutes ?? 0} min`} />
+                <View style={styles.insightDivider} />
+                <Insight label="Avg Pace" val="—" />
+                <View style={styles.insightDivider} />
+                <Insight label="Peak" val="—" />
+              </View>
+            </LinearGradient>
+          </View>
 
-            <View style={styles.insightRow}>
-              <Insight label="Active" val={`${today?.active_minutes ?? 0} min`} />
-              <View style={styles.insightDivider} />
-              <Insight label="Avg Pace" val="—" />
-              <View style={styles.insightDivider} />
-              <Insight label="Peak" val="—" />
-            </View>
-          </LinearGradient>
-
-          <Text style={styles.footerText}>
-            Every step moves you forward 💪
-          </Text>
+          <View style={styles.motivationBadge}>
+            <LinearGradient
+              colors={['rgba(251, 191, 36, 0.15)', 'rgba(251, 191, 36, 0.05)']}
+              style={styles.motivationGradient}
+            >
+              <Text style={styles.motivationText}>Every step moves you forward 💪</Text>
+            </LinearGradient>
+          </View>
         </ScrollView>
       ) : (
         <StepsHistory userId={userId} stepGoal={stepGoal} />
@@ -180,12 +192,17 @@ export default function Steps() {
 
 const Break = ({ label, val, icon: Icon, color }: any) => (
   <View style={styles.breakCard}>
-    <View style={styles.breakIconWrap}>
-      <Icon size={16} color={color} />
-    </View>
-    <Text style={styles.breakLabel}>{label}</Text>
-    <Text style={styles.breakVal}>{val.toLocaleString()}</Text>
-    <Text style={styles.stepsTxt}>steps</Text>
+    <LinearGradient
+      colors={[`${color}20`, `${color}08`]}
+      style={styles.breakCardInner}
+    >
+      <View style={[styles.breakIconWrap, { backgroundColor: `${color}25` }]}>
+        <Icon size={16} color={color} />
+      </View>
+      <Text style={styles.breakLabel}>{label}</Text>
+      <Text style={styles.breakVal}>{val.toLocaleString()}</Text>
+      <Text style={styles.stepsTxt}>steps</Text>
+    </LinearGradient>
   </View>
 );
 
@@ -204,27 +221,33 @@ const styles = StyleSheet.create({
   /* ---------- HEADER ---------- */
 
   header: {
-    paddingTop: 56,
-    paddingHorizontal: 24,
-    paddingBottom: 12,
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
 
-  icon: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#111',
-    borderRadius: 14,
+  headerCenter: {
+    alignItems: 'center',
+  },
+
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
 
   title: {
     color: '#fff',
     fontWeight: '800',
-    fontSize: 17,
+    fontSize: 18,
     textAlign: 'center',
   },
 
@@ -233,80 +256,98 @@ const styles = StyleSheet.create({
     fontSize: 10,
     textAlign: 'center',
     marginTop: 2,
-    opacity: 0.9,
   },
 
   /* ---------- TABS ---------- */
 
   tabs: {
     flexDirection: 'row',
-    backgroundColor: '#111',
-    marginHorizontal: 24,
-    marginTop: 20,
-    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 16,
     padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
 
   tab: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
     alignItems: 'center',
   },
 
   tabActive: {
-    backgroundColor: '#222',
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
 
   tabText: {
-    color: '#fff',
+    color: 'rgba(255,255,255,0.5)',
     fontWeight: '700',
     fontSize: 13,
+  },
+
+  tabTextActive: {
+    color: '#fff',
+  },
+
+  /* ---------- SECTION TITLE ---------- */
+
+  sectionTitle: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginHorizontal: 24,
+    marginTop: 28,
+    marginBottom: 12,
   },
 
   /* ---------- BREAKDOWN ---------- */
 
   breakRow: {
     flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 24,
-    marginTop: 24,
+    gap: 10,
+    paddingHorizontal: 20,
   },
 
   breakCard: {
     flex: 1,
-    backgroundColor: '#111',
-    borderRadius: 22,
-    padding: 16,
-    minHeight: 120,
-    justifyContent: 'space-between',
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+
+  breakCardInner: {
+    padding: 14,
+    minHeight: 130,
   },
 
   breakIconWrap: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#1a1a1a',
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   breakLabel: {
-    color: '#666',
-    fontSize: 10,
-    letterSpacing: 1,
-    marginTop: 6,
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 9,
+    letterSpacing: 1.5,
+    fontWeight: '700',
+    marginTop: 12,
   },
 
   breakVal: {
     color: '#fff',
     fontWeight: '900',
-    fontSize: 16,
+    fontSize: 20,
     marginTop: 4,
   },
 
   stepsTxt: {
-    color: '#444',
+    color: 'rgba(255,255,255,0.3)',
     fontSize: 10,
     marginTop: 2,
   },
@@ -314,33 +355,25 @@ const styles = StyleSheet.create({
   /* ---------- AUTO DETECT TEXT ---------- */
 
   auto: {
-    color: '#333',
-    fontSize: 9,
+    color: 'rgba(255,255,255,0.2)',
+    fontSize: 8,
     textAlign: 'center',
-    marginTop: 12,
-    letterSpacing: 1,
+    marginTop: 16,
+    letterSpacing: 1.5,
   },
 
   /* ---------- INSIGHTS ---------- */
 
   insightCard: {
-    marginHorizontal: 24,
-    marginTop: 28,
-    borderRadius: 26,
-    padding: 18,
-    backgroundColor: '#0f0f0f',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 10,
+    marginHorizontal: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
 
-  insightTitle: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 13,
-    marginBottom: 14,
+  insightInner: {
+    padding: 18,
   },
 
   insightRow: {
@@ -350,8 +383,8 @@ const styles = StyleSheet.create({
 
   insightDivider: {
     width: 1,
-    height: 32,
-    backgroundColor: '#1f1f1f',
+    height: 36,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
 
   insItem: {
@@ -360,23 +393,36 @@ const styles = StyleSheet.create({
   },
 
   insLabel: {
-    color: '#666',
+    color: 'rgba(255,255,255,0.4)',
     fontSize: 10,
+    fontWeight: '600',
   },
 
   insVal: {
     color: '#fff',
     fontWeight: '900',
     marginTop: 6,
-    fontSize: 13,
+    fontSize: 15,
   },
 
-  /* ---------- FOOTER ---------- */
+  /* ---------- MOTIVATION ---------- */
 
-  footerText: {
-    textAlign: 'center',
-    color: '#666',
-    fontSize: 12,
+  motivationBadge: {
+    marginHorizontal: 20,
     marginTop: 24,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+
+  motivationGradient: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+
+  motivationText: {
+    color: '#fbbf24',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

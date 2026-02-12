@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Animated } from 'react-native';
-import { ArrowLeft, Flame, Leaf, Wheat, Droplets, Activity } from 'lucide-react-native';
+import { ArrowLeft, Flame, Leaf, Wheat, Droplets, Activity, Lightbulb, Sparkles } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import { getMeals, subscribeMeals, Meal } from '@/logic/foodMeals';
 import Svg, { Circle } from 'react-native-svg';
@@ -33,14 +34,26 @@ export default function FoodInsights() {
     return { calories, protein, carbs, fats, fiber };
   }, [filteredMeals]);
 
+  const macroData = [
+    { label: 'Protein', value: totals.protein, unit: 'g', color: '#60a5fa', icon: Activity, target: 120 },
+    { label: 'Carbs', value: totals.carbs, unit: 'g', color: '#a78bfa', icon: Wheat, target: 250 },
+    { label: 'Fats', value: totals.fats, unit: 'g', color: '#fbbf24', icon: Droplets, target: 70 },
+    { label: 'Fiber', value: totals.fiber, unit: 'g', color: '#34d399', icon: Leaf, target: 30 },
+  ];
+
   return (
     <View style={styles.container}>
+      <LinearGradient colors={['#0f0f1a', '#000000', '#050510']} style={StyleSheet.absoluteFill} />
+
       <View style={styles.header}>
         <Pressable style={styles.iconBtn} onPress={() => router.back()}>
-          <ArrowLeft size={18} color="#fff" />
+          <ArrowLeft size={20} color="#fff" />
         </Pressable>
-        <Text style={styles.title}>Insights</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.title}>Insights</Text>
+          <Text style={styles.subtitle}>Nutrition analysis</Text>
+        </View>
+        <View style={{ width: 44 }} />
       </View>
 
       <View style={styles.tabs}>
@@ -51,57 +64,104 @@ export default function FoodInsights() {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.heroRow}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Hero Calories Ring */}
+        <View style={styles.heroSection}>
           <RingCard
             label="Calories"
             value={`${totals.calories}`}
             unit="kcal"
             target={2200}
-            color="#A78BFA"
-            icon={<Flame size={14} color="#C4B5FD" />}
-            floating
+            color="#a78bfa"
+            icon={<Flame size={16} color="#a78bfa" />}
           />
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Macros</Text>
-          <View style={styles.macroGrid}>
-            <Macro label="Protein" value={`${totals.protein} g`} icon={<Activity size={14} color="#93C5FD" />} />
-            <Macro label="Carbs" value={`${totals.carbs} g`} icon={<Wheat size={14} color="#C4B5FD" />} />
-            <Macro label="Fats" value={`${totals.fats} g`} icon={<Droplets size={14} color="#F2B27A" />} />
-            <Macro label="Fiber" value={`${totals.fiber} g`} icon={<Leaf size={14} color="#86EFAC" />} />
-          </View>
+        {/* Macros Section */}
+        <Text style={styles.sectionTitle}>MACRONUTRIENTS</Text>
+        <View style={styles.macroGrid}>
+          {macroData.map(m => (
+            <MacroCard key={m.label} {...m} />
+          ))}
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Coach insight</Text>
-          <Text style={styles.cardBody}>
-            Keep meals balanced—aim for protein at every meal and add fiber from
-            whole grains or vegetables.
-          </Text>
+        {/* Coach Insight */}
+        <Text style={styles.sectionTitle}>COACH INSIGHT</Text>
+        <View style={styles.insightCard}>
+          <LinearGradient
+            colors={['rgba(96,165,250,0.12)', 'rgba(96,165,250,0.04)']}
+            style={styles.insightCardInner}
+          >
+            <View style={styles.insightHeader}>
+              <View style={styles.insightIconWrap}>
+                <Lightbulb size={16} color="#60a5fa" />
+              </View>
+              <Text style={styles.insightTitle}>Nutrition Tip</Text>
+            </View>
+            <Text style={styles.insightBody}>
+              Keep meals balanced—aim for protein at every meal and add fiber from
+              whole grains or vegetables.
+            </Text>
+          </LinearGradient>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Micros (preview)</Text>
-          <Text style={styles.cardBody}>
-            Coming soon: iron, calcium, potassium, and sodium breakdown once the
-            full food database is connected.
-          </Text>
+        {/* Coming Soon */}
+        <Text style={styles.sectionTitle}>COMING SOON</Text>
+        <View style={styles.comingSoonCard}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
+            style={styles.comingSoonInner}
+          >
+            <View style={styles.comingSoonIcon}>
+              <Sparkles size={20} color="#a78bfa" />
+            </View>
+            <Text style={styles.comingSoonTitle}>Micronutrients</Text>
+            <Text style={styles.comingSoonBody}>
+              Iron, calcium, potassium, and sodium breakdown once the full food database is connected.
+            </Text>
+          </LinearGradient>
         </View>
       </ScrollView>
     </View>
   );
 }
 
-function Macro({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+function MacroCard({
+  label,
+  value,
+  unit,
+  color,
+  icon: Icon,
+  target,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+  color: string;
+  icon: any;
+  target: number;
+}) {
+  const progress = Math.min(value / target, 1);
   return (
-    <View style={styles.macroItem}>
-      <View style={styles.macroIcon}>{icon}</View>
-      <View>
-        <Text style={styles.macroLabel}>{label}</Text>
-        <Text style={styles.macroValue}>{value}</Text>
-      </View>
+    <View style={styles.macroCard}>
+      <LinearGradient
+        colors={[`${color}18`, `${color}08`]}
+        style={styles.macroCardInner}
+      >
+        <View style={styles.macroCardHeader}>
+          <View style={[styles.macroCardIcon, { backgroundColor: `${color}25` }]}>
+            <Icon size={14} color={color} />
+          </View>
+          <Text style={styles.macroCardLabel}>{label}</Text>
+        </View>
+        <Text style={styles.macroCardValue}>
+          {value}<Text style={styles.macroCardUnit}>{unit}</Text>
+        </Text>
+        <View style={styles.macroProgress}>
+          <View style={[styles.macroProgressFill, { width: `${progress * 100}%`, backgroundColor: color }]} />
+        </View>
+        <Text style={styles.macroTarget}>{target}{unit} target</Text>
+      </LinearGradient>
     </View>
   );
 }
@@ -113,7 +173,6 @@ function RingCard({
   target,
   color,
   icon,
-  floating,
 }: {
   label: string;
   value: string;
@@ -121,11 +180,11 @@ function RingCard({
   target: number;
   color: string;
   icon: React.ReactNode;
-  floating?: boolean;
 }) {
   const progress = Math.min(Number(value) / Math.max(target, 1), 1);
-  const r = 34;
-  const stroke = 6;
+  const percent = Math.round(progress * 100);
+  const r = 60;
+  const stroke = 10;
   const c = 2 * Math.PI * r;
   const offset = c * (1 - progress);
   const animatedOffset = useRef(new Animated.Value(c)).current;
@@ -137,107 +196,222 @@ function RingCard({
       useNativeDriver: false,
     }).start();
   }, [offset]);
+
   return (
-    <View style={[styles.ringCard, floating && styles.ringCardFloating]}>
-      <View style={styles.ringIcon}>{icon}</View>
-      <View style={styles.ringWrap}>
-        <View style={styles.ringCenter}>
-          <Text style={styles.ringValue}>{value}</Text>
-          <Text style={styles.ringUnit}>{unit}</Text>
+    <View style={styles.ringCard}>
+      <LinearGradient
+        colors={['rgba(167,139,250,0.15)', 'rgba(167,139,250,0.05)']}
+        style={styles.ringCardInner}
+      >
+        <View style={styles.ringIcon}>{icon}</View>
+        <View style={styles.ringWrap}>
+          <View style={styles.ringCenter}>
+            <Text style={styles.ringValue}>{value}</Text>
+            <Text style={styles.ringUnit}>{unit}</Text>
+          </View>
+          <Svg width={140} height={140}>
+            <Circle cx="70" cy="70" r={r} stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} fill="none" />
+            <AnimatedCircle
+              cx="70"
+              cy="70"
+              r={r}
+              stroke={color}
+              strokeWidth={stroke}
+              strokeDasharray={c}
+              strokeDashoffset={animatedOffset}
+              strokeLinecap="round"
+              fill="none"
+              rotation="-90"
+              origin="70,70"
+            />
+          </Svg>
         </View>
-        <Svg width={90} height={90}>
-          <Circle cx="45" cy="45" r={r} stroke="#141414" strokeWidth={stroke} fill="none" />
-          <AnimatedCircle
-            cx="45"
-            cy="45"
-            r={r}
-            stroke={color}
-            strokeWidth={stroke}
-            strokeDasharray={c}
-            strokeDashoffset={animatedOffset}
-            strokeLinecap="round"
-            fill="none"
-            rotation="-90"
-            origin="45,45"
-          />
-        </Svg>
-      </View>
-      <Text style={styles.ringLabel}>{label}</Text>
+        <View style={styles.ringMeta}>
+          <Text style={styles.ringLabel}>{label}</Text>
+          <Text style={styles.ringPercent}>{percent}% of daily goal</Text>
+        </View>
+        <View style={styles.ringTargetRow}>
+          <Text style={styles.ringTargetLabel}>Target</Text>
+          <Text style={styles.ringTargetValue}>{target} {unit}</Text>
+        </View>
+      </LinearGradient>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
+
   header: {
-    paddingTop: 56,
-    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingHorizontal: 20,
     paddingBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  headerCenter: {
+    alignItems: 'center',
+  },
   iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  title: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  subtitle: { color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 },
+
+  tabs: { paddingHorizontal: 20, marginTop: 10 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 120, paddingTop: 20 },
+
+  sectionTitle: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+
+  heroSection: {
+    alignItems: 'center',
+  },
+
+  ringCard: {
+    width: '100%',
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  ringCardInner: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  ringWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+  },
+  ringCenter: {
+    position: 'absolute',
+    alignItems: 'center',
+  },
+  ringValue: { color: '#fff', fontSize: 32, fontWeight: '900' },
+  ringUnit: { color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 2 },
+  ringIcon: {
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: '#111',
+    backgroundColor: 'rgba(167,139,250,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { color: '#fff', fontSize: 17, fontWeight: '600' },
-  tabs: { paddingHorizontal: 24, marginTop: 8 },
-  scroll: { paddingHorizontal: 24, paddingBottom: 120, paddingTop: 18 },
-  heroRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  ringCard: {
-    flex: 1,
+  ringMeta: {
     alignItems: 'center',
+    marginTop: 8,
   },
-  ringCardFloating: {
-    backgroundColor: 'transparent',
-  },
-  ringWrap: { alignItems: 'center', justifyContent: 'center' },
-  ringCenter: { position: 'absolute', alignItems: 'center' },
-  ringValue: { color: '#E5E7EB', fontSize: 16, fontWeight: '800' },
-  ringUnit: { color: '#6B7280', fontSize: 10, marginTop: 2 },
-  ringLabel: { color: '#9CA3AF', fontSize: 12, marginTop: 8 },
-  ringIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#0B1220',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  card: {
-    backgroundColor: '#0F0F0F',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    marginBottom: 16,
-  },
-  cardTitle: { color: '#E5E7EB', fontSize: 13, fontWeight: '700' },
-  cardBody: { color: '#9CA3AF', fontSize: 12, marginTop: 8, lineHeight: 18 },
-  macroGrid: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  macroItem: {
-    width: '47%',
+  ringLabel: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  ringPercent: { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 },
+  ringTargetRow: {
     flexDirection: 'row',
-    gap: 10,
     alignItems: 'center',
-    backgroundColor: '#0B0B0B',
-    padding: 10,
-    borderRadius: 14,
+    gap: 8,
+    marginTop: 16,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
-  macroIcon: {
+  ringTargetLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
+  ringTargetValue: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  macroGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  macroCard: {
+    width: '47%',
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  macroCardInner: {
+    padding: 16,
+  },
+  macroCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  macroCardIcon: {
     width: 28,
     height: 28,
-    borderRadius: 14,
-    backgroundColor: '#0B1220',
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  macroLabel: { color: '#6B7280', fontSize: 11 },
-  macroValue: { color: '#E5E7EB', fontSize: 14, fontWeight: '700', marginTop: 4 },
+  macroCardLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '600' },
+  macroCardValue: { color: '#fff', fontSize: 24, fontWeight: '900' },
+  macroCardUnit: { color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: '600' },
+  macroProgress: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 2,
+    marginTop: 12,
+    overflow: 'hidden',
+  },
+  macroProgressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  macroTarget: { color: 'rgba(255,255,255,0.3)', fontSize: 10, marginTop: 8 },
+
+  insightCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  insightCardInner: {
+    padding: 20,
+  },
+  insightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  insightIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(96,165,250,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  insightTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  insightBody: { color: 'rgba(255,255,255,0.6)', fontSize: 14, lineHeight: 22 },
+
+  comingSoonCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  comingSoonInner: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  comingSoonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(167,139,250,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  comingSoonTitle: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  comingSoonBody: { color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', lineHeight: 20 },
 });

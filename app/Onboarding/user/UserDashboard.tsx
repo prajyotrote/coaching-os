@@ -6,23 +6,27 @@ import {
   ScrollView,
   Pressable,
   Dimensions,
-  Image,
 } from 'react-native';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { useDashboardData } from '@/lib/hooks/useDashboardData';
 import { useHealthActions } from '@/lib/hooks/useHealthActions';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 
 import Animated, {
   useSharedValue,
   withTiming,
+  withSpring,
   useAnimatedProps,
-  Layout,
-  FadeIn,
+  useAnimatedStyle,
+  FadeInDown,
+  FadeInUp,
+  withRepeat,
+  withSequence,
+  Easing,
 } from 'react-native-reanimated';
 
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, RadialGradient, Stop, LinearGradient as SvgLinearGradient } from 'react-native-svg';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -32,7 +36,6 @@ import {
   Moon,
   Zap,
   TrendingUp,
-  TrendingDown, 
   Dumbbell,
   Utensils,
   Droplets,
@@ -45,8 +48,9 @@ import {
   Plus,
   Play,
   Sparkles,
-  ChevronRight, Droplet,
-FileText,
+  FileText,
+  ChevronRight,
+  Activity,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 
@@ -62,7 +66,7 @@ export default function UserDashboard({ onLogout }: Props) {
     name,
     burned,
     steps = 0,
-    sleep= 0,
+    sleep = 0,
     recovery,
     water,
     calories,
@@ -72,70 +76,89 @@ export default function UserDashboard({ onLogout }: Props) {
     targets,
   } = useDashboardData();
 
+  const hasCoachPlan = false;
+
   useFocusEffect(
     React.useCallback(() => {
       refresh();
     }, [refresh])
   );
 
-  function getGreeting() {
-    
-  const hour = new Date().getHours();
+  // Animations
+  const pulseAnim = useSharedValue(1);
+  const glowAnim = useSharedValue(0.4);
+  const scoreProgress = useSharedValue(0);
+  const waterProgress = useSharedValue(0);
 
-  if (hour >= 5 && hour < 12) return 'Good morning';
-  if (hour >= 12 && hour < 17) return 'Good afternoon';
-  if (hour >= 17 && hour < 21) return 'Good evening';
-
-  return 'Good Night';
-}
-
-
-  const radius = 80;
+  const radius = 85;
   const circumference = 2 * Math.PI * radius;
-
-  const safeScore = Math.min(100, Math.max(0, score || 0));
-  const progress = useSharedValue(0);
+  const waterRadius = 26;
+  const waterCircumference = 2 * Math.PI * waterRadius;
 
   useEffect(() => {
-    progress.value = withTiming(safeScore, { duration: 800 });
+    // Pulse animation
+    pulseAnim.value = withRepeat(
+      withSequence(
+        withTiming(1.02, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+
+    // Glow animation
+    glowAnim.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2500 }),
+        withTiming(0.4, { duration: 2500 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const safeScore = Math.min(100, Math.max(0, score || 0));
+
+  useEffect(() => {
+    scoreProgress.value = withSpring(safeScore / 100, { damping: 15 });
   }, [safeScore]);
 
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset:
-      circumference - (progress.value / 100) * circumference,
+  useEffect(() => {
+    const pct = Math.min(1, water / targets.waterTarget);
+    waterProgress.value = withTiming(pct, { duration: 600 });
+  }, [water, targets.waterTarget]);
+
+  const animatedScoreProps = useAnimatedProps(() => ({
+    strokeDashoffset: circumference - scoreProgress.value * circumference,
   }));
 
-  const waterProgress = useSharedValue(0);
-const waterCircumference = 2 * Math.PI * 26; // r = 26 from SVG
+  const animatedWaterProps = useAnimatedProps(() => ({
+    strokeDashoffset: waterCircumference - waterProgress.value * waterCircumference,
+  }));
 
-useEffect(() => {
-  const pct = Math.min(1, water / targets.waterTarget);
-  waterProgress.value = withTiming(pct, { duration: 600 });
-}, [water, targets.waterTarget]);
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseAnim.value }],
+  }));
 
-const animatedWaterProps = useAnimatedProps(() => ({
-  strokeDashoffset:
-    waterCircumference - waterProgress.value * waterCircumference,
-}));
-
-
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glowAnim.value,
+  }));
 
   const { logWorkout, logWater, logMeal } = useHealthActions();
 
-  // ---------------- STON Intelligence (v2)
-  // ----------------
-  type CoachActionType = 'water' | 'meal' | 'workout' | null;
+  function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 17) return 'Good afternoon';
+    if (hour >= 17 && hour < 21) return 'Good evening';
+    return 'Good night';
+  }
 
+  // STON Intelligence
+  type CoachActionType = 'water' | 'meal' | 'workout' | null;
   const hour = new Date().getHours();
-  const waterPct = targets.waterTarget
-    ? water / targets.waterTarget
-    : 0;
-  const caloriePct = targets.calorieTarget
-    ? calories / targets.calorieTarget
-    : 0;
-  const workoutPct = targets.workoutTarget
-    ? workouts / targets.workoutTarget
-    : 0;
+  const waterPct = targets.waterTarget ? water / targets.waterTarget : 0;
+  const caloriePct = targets.calorieTarget ? calories / targets.calorieTarget : 0;
 
   const candidates: Array<{
     priority: number;
@@ -181,7 +204,7 @@ const animatedWaterProps = useAnimatedProps(() => ({
   if (sleep < 6) {
     candidates.push({
       priority: 4,
-      message: 'Low sleep recovery — keep intensity light today',
+      message: 'Low sleep — keep intensity light today',
       sub: 'Focus on mobility + technique work',
       action: null,
     });
@@ -207,759 +230,952 @@ const animatedWaterProps = useAnimatedProps(() => ({
 
   const coach = candidates.sort((a, b) => a.priority - b.priority)[0];
 
-
   const metrics = [
-    { label: 'Steps', val: `${steps}`, icon: Footprints, trend: 'up' },
-    { label: 'Sleep', val: `${sleep.toFixed(1)}h`, icon: Moon },
-    { label: 'Recovery', val: `${recovery}%`, icon: Zap, trend: 'up' },
-    { label: 'Burned', val: `${burned} kcal`, icon: Flame, trend: 'up' },
-  ];
-
-  const sideQuests = [
-    {
-      label: 'Workouts',
-      val: `${workouts} / ${targets.workoutTarget}`,
-      icon: Dumbbell,
-    },
-    {
-      label: 'Nutrition',
-      val: `${calories} / ${targets.calorieTarget}`,
-      icon: Utensils,
-    },
-    {
-      label: 'Water',
-      val: `${water}ml / ${targets.waterTarget}ml`,
-      icon: Droplets,
-    },
+    { label: 'Steps', val: steps.toLocaleString(), icon: Footprints, color: '#818cf8', route: '/Steps' },
+    { label: 'Sleep', val: `${sleep.toFixed(1)}h`, icon: Moon, color: '#a78bfa', route: '/Sleep' },
+    { label: 'Recovery', val: `${recovery}%`, icon: Zap, color: '#34d399', route: '/Recovery' },
+    { label: 'Burned', val: `${burned}`, icon: Flame, color: '#f97316', route: '/Kcal' },
   ];
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
+      <LinearGradient
+        colors={['#0f0f1a', '#000000', '#050510']}
+        style={StyleSheet.absoluteFill}
+      />
 
-        {/* HEADER */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        {/* ==================== HEADER ==================== */}
         <View style={styles.header}>
-          <MaskedView maskElement={<Text style={styles.loop}>STON.FIT</Text>}>
-            <LinearGradient colors={['#818cf8', '#a78bfa']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={[styles.loop, { opacity: 0 }]}>STON.FIT</Text>
+          <MaskedView maskElement={<Text style={styles.logo}>STON.FIT</Text>}>
+            <LinearGradient colors={['#818cf8', '#a78bfa', '#c084fc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <Text style={[styles.logo, { opacity: 0 }]}>STON.FIT</Text>
             </LinearGradient>
           </MaskedView>
 
-          <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={styles.headerRight}>
             <Pressable style={styles.iconBtn}>
               <Bell size={20} color="#9ca3af" />
-              <View style={styles.dot} />
+              <View style={styles.notifDot} />
             </Pressable>
-            <Pressable style={styles.avatar} onPress={onLogout}>
-              <User size={18} color="#9ca3af" />
+            <Pressable style={styles.avatarBtn} onPress={() => router.push('/Profile')}>
+              <LinearGradient colors={['#818cf8', '#a78bfa']} style={styles.avatarGradient}>
+                <User size={16} color="#fff" />
+              </LinearGradient>
             </Pressable>
           </View>
         </View>
 
-        {/* GREETING */}
-        {/* GREETING */}
-<MaskedView
-  maskElement={
-    <Text style={styles.greeting}>
-     {getGreeting()}, {name || 'there'}
-    </Text>
-  }
->
-  <LinearGradient
-    colors={['#ffffff', '#c7d2fe', '#ddd6fe']}
-    start={{ x: 0, y: 0 }}
-    end={{ x: 1, y: 0 }}
-  >
-    <Text style={[styles.greeting, { opacity: 0 }]}>
-      {getGreeting()}, {name || 'there'}
-    </Text>
-  </LinearGradient>
-</MaskedView>
+        {/* ==================== GREETING ==================== */}
+        <Animated.View entering={FadeInUp.duration(600)} style={styles.greetingWrap}>
+          <MaskedView
+            maskElement={<Text style={styles.greeting}>{getGreeting()}, {name || 'there'}</Text>}
+          >
+            <LinearGradient colors={['#ffffff', '#e0e7ff', '#c7d2fe']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <Text style={[styles.greeting, { opacity: 0 }]}>{getGreeting()}, {name || 'there'}</Text>
+            </LinearGradient>
+          </MaskedView>
+          <Text style={styles.subGreeting}>Let's crush your goals today.</Text>
+        </Animated.View>
 
-
-        <Text style={styles.subGreeting}>Let’s move you closer to your goals today.</Text>
-
-        {/* DAILY SCORE */}
-        <View style={styles.ringWrap}>
-          <Svg width={200} height={200}>
-            <Circle cx="100" cy="100" r={radius} stroke="#111" strokeWidth="14" fill="none" />
-            <AnimatedCircle
-              cx="100"
-              cy="100"
-              r={radius}
-              stroke="#818cf8"
-              strokeWidth="14"
-              fill="none"
-              strokeDasharray={circumference}
-              animatedProps={animatedProps}
-              strokeLinecap="round"
-              rotation="-90"
-              origin="100,100"
+        {/* ==================== HERO SCORE RING ==================== */}
+        <Animated.View entering={FadeInUp.delay(100).duration(700)} style={styles.heroSection}>
+          <Animated.View style={[styles.heroGlow, glowStyle]}>
+            <LinearGradient
+              colors={['transparent', 'rgba(129, 140, 248, 0.2)', 'rgba(167, 139, 250, 0.1)', 'transparent']}
+              style={styles.heroGlowGradient}
             />
-          </Svg>
+          </Animated.View>
 
-          <View style={styles.ringCenter}>
-            <Text style={styles.score}>{safeScore}%</Text>
-            <Text style={styles.today}>TODAY</Text>
+          <Animated.View style={[styles.scoreRing, pulseStyle]}>
+            <Svg width={210} height={210}>
+              <Defs>
+                <RadialGradient id="scoreGlow" cx="50%" cy="50%" rx="50%" ry="50%">
+                  <Stop offset="0%" stopColor="#818cf8" stopOpacity="0.4" />
+                  <Stop offset="70%" stopColor="#818cf8" stopOpacity="0.1" />
+                  <Stop offset="100%" stopColor="#818cf8" stopOpacity="0" />
+                </RadialGradient>
+                <SvgLinearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#818cf8" />
+                  <Stop offset="50%" stopColor="#a78bfa" />
+                  <Stop offset="100%" stopColor="#c084fc" />
+                </SvgLinearGradient>
+              </Defs>
+
+              <Circle cx="105" cy="105" r="100" fill="url(#scoreGlow)" />
+              <Circle cx="105" cy="105" r={radius} stroke="rgba(255,255,255,0.06)" strokeWidth="12" fill="none" />
+              <AnimatedCircle
+                cx="105"
+                cy="105"
+                r={radius}
+                stroke="url(#scoreGradient)"
+                strokeWidth="12"
+                fill="none"
+                strokeDasharray={circumference}
+                animatedProps={animatedScoreProps}
+                strokeLinecap="round"
+                rotation="-90"
+                origin="105,105"
+              />
+            </Svg>
+
+            <View style={styles.scoreCenter}>
+              <Text style={styles.scoreLabel}>TODAY'S SCORE</Text>
+              <MaskedView maskElement={<Text style={styles.scoreValue}>{safeScore}%</Text>}>
+                <LinearGradient colors={['#ffffff', '#e0e7ff', '#c7d2fe']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                  <Text style={[styles.scoreValue, { opacity: 0 }]}>{safeScore}%</Text>
+                </LinearGradient>
+              </MaskedView>
+            </View>
+          </Animated.View>
+
+          <View style={styles.streakBadge}>
+            <LinearGradient colors={['rgba(251, 191, 36, 0.15)', 'rgba(251, 191, 36, 0.05)']} style={styles.streakGradient}>
+              <Text style={styles.streakEmoji}>🔥</Text>
+              <Text style={styles.streakText}>Keep your streak alive!</Text>
+            </LinearGradient>
           </View>
-        </View>
+        </Animated.View>
 
-        <Text style={styles.streak}>KEEP YOUR STREAK ALIVE</Text>
+        {/* ==================== METRICS GRID ==================== */}
+        <Animated.View entering={FadeInDown.delay(200)}>
+          <Text style={styles.sectionTitle}>TODAY'S METRICS</Text>
+          <View style={styles.metricsGrid}>
+            {metrics.map((m, i) => (
+              <Pressable
+                key={m.label}
+                style={styles.metricCard}
+                onPress={() => router.push(m.route as any)}
+              >
+                <LinearGradient
+                  colors={[`${m.color}18`, `${m.color}08`]}
+                  style={styles.metricGradient}
+                >
+                  <View style={[styles.metricIconWrap, { backgroundColor: `${m.color}25` }]}>
+                    <m.icon size={18} color={m.color} />
+                  </View>
+                  <Text style={styles.metricValue}>{m.val}</Text>
+                  <Text style={styles.metricLabel}>{m.label}</Text>
+                  <ChevronRight size={14} color="rgba(255,255,255,0.2)" style={styles.metricArrow} />
+                </LinearGradient>
+              </Pressable>
+            ))}
+          </View>
+        </Animated.View>
 
-        {/* METRICS */}
-        <View style={styles.metricsGrid}>
-          {metrics.map((m, i) => (
-            <Pressable
-  key={i}
-  style={styles.metricCard}
-  onPress={() => {
-    if (m.label === 'Steps') {
-      router.push('/Steps');
-    }
-     if (m.label === 'Sleep') {
-    router.push('/Sleep');
-  }
-    if (m.label === 'Burned') {
-      router.push('/Kcal');
-    }
-    if (m.label === 'Recovery') {
-      router.push('/Recovery');
-    }
-  }} 
->
-              <View style={styles.metricTop}>
-                <m.icon size={18} color="#818cf8" />
-                {m.trend === 'up' && <TrendingUp size={12} color="#34d399" />}
-                {m.trend === 'down' && <TrendingDown size={12} color="#60a5fa" />}
+        {/* ==================== WORKOUT CARD ==================== */}
+        <Animated.View entering={FadeInDown.delay(300)}>
+          <Text style={styles.sectionTitle}>TODAY'S WORKOUT</Text>
+          {hasCoachPlan ? (
+            <View style={styles.workoutCard}>
+              <LinearGradient
+                colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
+                style={styles.workoutGradient}
+              >
+                <View style={styles.workoutHeader}>
+                  <View>
+                    <Text style={styles.workoutCoach}>COACH ALEX</Text>
+                    <Text style={styles.workoutTitle}>Hypertrophy Chest & Back</Text>
+                  </View>
+                  <View style={styles.workoutIconWrap}>
+                    <Dumbbell size={22} color="#818cf8" />
+                  </View>
+                </View>
+
+                <View style={styles.workoutTags}>
+                  {['65 MIN', 'STRENGTH', 'UPPER BODY'].map(t => (
+                    <View key={t} style={styles.tagPill}>
+                      <Text style={styles.tagText}>{t}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                <View style={styles.workoutActions}>
+                  <Pressable
+                    style={styles.workoutPrimaryBtn}
+                    onPress={async () => {
+                      await logWorkout();
+                      await refresh();
+                    }}
+                  >
+                    <LinearGradient colors={['#818cf8', '#a78bfa']} style={styles.workoutBtnGradient}>
+                      <Play size={16} fill="#fff" color="#fff" />
+                      <Text style={styles.workoutBtnText}>START</Text>
+                    </LinearGradient>
+                  </Pressable>
+
+                  <Pressable style={styles.workoutSecondaryBtn}>
+                    <FileText size={16} color="#888" />
+                    <Text style={styles.workoutSecondaryText}>VIEW PLAN</Text>
+                  </Pressable>
+                </View>
+              </LinearGradient>
+            </View>
+          ) : (
+            <View style={styles.workoutCard}>
+              <LinearGradient
+                colors={['rgba(96, 165, 250, 0.14)', 'rgba(255,255,255,0.02)']}
+                style={styles.workoutGradient}
+              >
+                <View style={styles.workoutHeader}>
+                  <View>
+                    <Text style={styles.workoutCoach}>NO COACH PLAN</Text>
+                    <Text style={styles.workoutTitle}>Build your workout</Text>
+                    <Text style={styles.workoutSub}>Create a quick plan or start today’s session.</Text>
+                  </View>
+                  <View style={styles.workoutIconWrap}>
+                    <Activity size={22} color="#60a5fa" />
+                  </View>
+                </View>
+
+                <View style={styles.workoutActions}>
+                  <Pressable style={styles.workoutPrimaryBtn}>
+                    <LinearGradient colors={['#60a5fa', '#818cf8']} style={styles.workoutBtnGradient}>
+                      <Sparkles size={16} color="#fff" />
+                      <Text style={styles.workoutBtnText}>BUILD WORKOUT</Text>
+                    </LinearGradient>
+                  </Pressable>
+
+                  <Pressable style={styles.workoutSecondaryBtn}>
+                    <Play size={16} color="#888" />
+                    <Text style={styles.workoutSecondaryText}>START TODAY</Text>
+                  </Pressable>
+                </View>
+              </LinearGradient>
+            </View>
+          )}
+        </Animated.View>
+
+        {/* ==================== NUTRITION CARD ==================== */}
+        <Animated.View entering={FadeInDown.delay(400)}>
+          <Text style={styles.sectionTitle}>NUTRITION</Text>
+          <Pressable style={styles.nutritionCard} onPress={() => router.push('/Food')}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
+              style={styles.nutritionGradient}
+            >
+              <View style={styles.nutritionHeader}>
+                <View style={styles.nutritionLeft}>
+                  <View style={styles.nutritionRing}>
+                    <Svg width={52} height={52}>
+                      <Circle cx="26" cy="26" r="22" stroke="rgba(255,255,255,0.08)" strokeWidth="4" fill="none" />
+                      <Circle
+                        cx="26"
+                        cy="26"
+                        r="22"
+                        stroke="#34d399"
+                        strokeWidth="4"
+                        fill="none"
+                        strokeDasharray={138}
+                        strokeDashoffset={138 - (Math.min(1, calories / targets.calorieTarget) * 138)}
+                        strokeLinecap="round"
+                        rotation="-90"
+                        origin="26,26"
+                      />
+                    </Svg>
+                    <Utensils size={16} color="#34d399" style={styles.nutritionIcon} />
+                  </View>
+                  <View>
+                    <Text style={styles.nutritionTitle}>Track Food</Text>
+                    <Text style={styles.nutritionSub}>{calories} / {targets.calorieTarget} kcal</Text>
+                  </View>
+                </View>
+
+                <View style={styles.nutritionActions}>
+                  <Pressable style={styles.nutritionIconBtn}>
+                    <Camera size={18} color="#888" />
+                  </Pressable>
+                  <Pressable style={styles.nutritionAddBtn}>
+                    <LinearGradient colors={['#34d399', '#10b981']} style={styles.nutritionAddGradient}>
+                      <Plus size={18} color="#fff" />
+                    </LinearGradient>
+                  </Pressable>
+                </View>
               </View>
-              <Text style={styles.metricValue}>{m.val}</Text>
-              <Text style={styles.metricLabel}>{m.label}</Text>
-            </Pressable>
-          ))}
-        </View>
 
-        {/* WORKOUT */}
-        {/* TODAY WORKOUT */}
-<View style={styles.workoutCard}>
-  <Text style={styles.coachSmall}>Coach Alex</Text>
-  <Text style={styles.workoutTitle}>Hypertrophy Chest & Back</Text>
+              {/* Macros */}
+              <View style={styles.macrosRow}>
+                {[
+                  { label: 'Protein', val: macros?.protein ?? 0, target: 120, color: '#818cf8' },
+                  { label: 'Carbs', val: macros?.carbs ?? 0, target: 200, color: '#fbbf24' },
+                  { label: 'Fats', val: macros?.fat ?? 0, target: 70, color: '#f472b6' },
+                ].map(m => (
+                  <View key={m.label} style={styles.macroItem}>
+                    <View style={styles.macroHeader}>
+                      <Text style={styles.macroLabel}>{m.label}</Text>
+                      <Text style={styles.macroVal}>{m.val}g</Text>
+                    </View>
+                    <View style={styles.macroBar}>
+                      <LinearGradient
+                        colors={[m.color, `${m.color}80`]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[styles.macroFill, { width: `${Math.min(100, (m.val / m.target) * 100)}%` }]}
+                      />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
 
-  <View style={styles.workoutTags}>
-    {['65 MIN', 'STRENGTH'].map(t => (
-      <View key={t} style={styles.tagPill}>
-        <Text style={styles.tagText}>{t}</Text>
-      </View>
-    ))}
-  </View>
+        {/* ==================== HYDRATION CARD ==================== */}
+        <Animated.View entering={FadeInDown.delay(500)}>
+          <Text style={styles.sectionTitle}>HYDRATION</Text>
+          <View style={styles.waterCard}>
+            <LinearGradient
+              colors={['rgba(96, 165, 250, 0.12)', 'rgba(96, 165, 250, 0.04)']}
+              style={styles.waterGradient}
+            >
+              <View style={styles.waterHeader}>
+                <View style={styles.waterLeft}>
+                  <View style={styles.waterRing}>
+                    <Svg width={60} height={60}>
+                      <Circle cx="30" cy="30" r={waterRadius} stroke="rgba(255,255,255,0.08)" strokeWidth="5" fill="none" />
+                      <AnimatedCircle
+                        cx="30"
+                        cy="30"
+                        r={waterRadius}
+                        stroke="#60a5fa"
+                        strokeWidth="5"
+                        fill="none"
+                        strokeDasharray={waterCircumference}
+                        animatedProps={animatedWaterProps}
+                        strokeLinecap="round"
+                        rotation="-90"
+                        origin="30,30"
+                      />
+                    </Svg>
+                    <Droplets size={18} color="#60a5fa" style={styles.waterIcon} />
+                  </View>
+                  <View>
+                    <Text style={styles.waterTitle}>Water Intake</Text>
+                    <Text style={styles.waterSub}>{water} / {targets.waterTarget} ml</Text>
+                  </View>
+                </View>
 
-  <View style={styles.workoutActions}>
-  <Pressable
-    style={styles.primaryBtn}
-    onPress={async () => {
-      await logWorkout();
-      await refresh();
-    }}
-  >
-    <Play size={16} fill="#000"  color="#000" />
-    <Text style={styles.primaryText}>START WORKOUT</Text>
-  </Pressable>
+                <Pressable style={styles.waterDetailBtn} onPress={() => router.push('/Onboarding/user/Hydration')}>
+                  <ArrowRight size={18} color="#60a5fa" />
+                </Pressable>
+              </View>
 
-  <Pressable style={styles.secondaryBtn}>
-    <FileText size={16} color="#fff" />
-    <Text style={styles.secondaryText}>VIEW PLAN</Text>
-  </Pressable>
-</View>
+              <View style={styles.waterButtons}>
+                {[250, 500, 750].map(v => (
+                  <Pressable
+                    key={v}
+                    style={styles.waterBtn}
+                    onPress={async () => {
+                      await logWater(v);
+                      await refresh();
+                    }}
+                  >
+                    <Text style={styles.waterBtnText}>+{v}ml</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </LinearGradient>
+          </View>
+        </Animated.View>
 
-</View>
+        {/* ==================== AI INTELLIGENCE ==================== */}
+        <Animated.View entering={FadeInDown.delay(600)}>
+          <Text style={styles.sectionTitle}>STON INTELLIGENCE</Text>
+          <Pressable
+            style={styles.aiCard}
+            onPress={async () => {
+              if (coach.action === 'water') {
+                await logWater(coach.amount ?? 500);
+                refresh();
+              }
+              if (coach.action === 'meal') {
+                await logMeal(coach.amount ?? 400);
+                refresh();
+              }
+              if (coach.action === 'workout') {
+                await logWorkout();
+                refresh();
+              }
+            }}
+          >
+            <LinearGradient
+              colors={['rgba(129, 140, 248, 0.12)', 'rgba(167, 139, 250, 0.06)']}
+              style={styles.aiGradient}
+            >
+              <View style={styles.aiIconWrap}>
+                <LinearGradient colors={['#818cf8', '#a78bfa']} style={styles.aiIconGradient}>
+                  <Sparkles size={18} color="#fff" />
+                </LinearGradient>
+              </View>
 
-
-        {/* TRACK FOOD */}
-<Pressable
-  style={styles.foodCard}
-  onPress={() => {
-    router.push('/Food');
-  }}
->
-  <View style={styles.foodHeader}>
-    <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
-  <View style={styles.foodRingWrap}>
-    <Svg width={48} height={48}>
-      <Circle cx="24" cy="24" r="20" stroke="#1a1a1a" strokeWidth="4" fill="none" />
-      <Circle
-        cx="24"
-        cy="24"
-        r="20"
-        stroke="#818cf8"
-        strokeWidth="4"
-        fill="none"
-        strokeDasharray={125}
-        strokeDashoffset={125 - (calories / targets.calorieTarget) * 125}
-        strokeLinecap="round"
-        rotation="-90"
-        origin="24,24"
-      />
-    </Svg>
-
-    {/* CENTER ICON */}
-    <Utensils size={14} color="#818cf8" style={styles.foodRingIcon} />
-  </View>
-
-  <View>
-    <Text style={styles.foodTitle}>Track Food</Text>
-    <Text style={styles.foodSub}>
-      {calories} of {targets.calorieTarget} kcal
-    </Text>
-  </View>
-    </View>
-
-
-    <View style={{ flexDirection: 'row', gap: 10 }}>
-  <Pressable style={styles.iconSquare}>
-    <Camera size={18} color="#fff" />
-  </Pressable>
-
-  <Pressable
-    style={styles.iconPrimary}
-    onPress={() => {
-      router.push('/Food');
-    }}
-  >
-    <Plus size={18} color="#000" />
-  </Pressable>
-</View>
-
-  </View>
-
-  <Pressable style={styles.foodBrowse}>
-    <Text style={{ color: '#666', fontWeight: '700' }}>Browse past meals →</Text>
-  </Pressable>
-
-  
-
-<View style={styles.macroRow}>
-  {[
-    { label: 'PROTEIN', val: `${macros?.protein ?? 0}g`, color: '#34d399', flex: Math.min(1, (macros?.protein ?? 0) / 120) },
-    { label: 'CARBS', val: `${macros?.carbs ?? 0}g`, color: '#fbbf24', flex: Math.min(1, (macros?.carbs ?? 0) / 200) },
-    { label: 'FATS', val: `${macros?.fat ?? 0}g`, color: '#818cf8', flex: Math.min(1, (macros?.fat ?? 0) / 70) },
-  ].map(m => (
-    <View key={m.label} style={{ flex: 1 }}>
-      <Text style={styles.macroLabel}>{m.label}</Text>
-      <Text style={styles.macroVal}>{m.val}</Text>
-
-      <View style={styles.macroBarBg}>
-      <Animated.View
-  entering={FadeIn}
-  layout={Layout.springify().damping(18)}
-  style={[
-    styles.macroFill,
-    {
-      flex: m.flex,
-      backgroundColor: m.color,
-    },
-  ]}
-/>
-      </View>
-    </View>
-  ))}
-</View>
-</Pressable>
-
-        {/* SIDE QUESTS */}
-        {/* HYDRATION BOOST */}
-{/* LOG WATER CARD */}
-{/* LOG WATER CARD */}
-<View style={styles.waterCard}>
-
-  {/* Header */}
-  <View style={styles.waterHeader}>
-    <View>
-      <Text style={styles.waterTitle}>LOG WATER</Text>
-      <Text style={styles.waterSub}>
-        {water} / {targets.waterTarget} ml
-      </Text>
-    </View>
-
-    <View style={{ flexDirection: 'row', gap: 10 }}>
-  <Pressable
-  style={styles.waterIconBtn}
-  onPress={() => router.push('/Onboarding/user/Hydration')}
->
-
-        <Bell size={16} color="#aaa" />
-      </Pressable>
-
-     <Pressable
-  style={styles.waterIconBtn}
-  onPress={() => router.push('/Onboarding/user/Hydration')}
->
-
-        <ArrowRight size={16} color="#aaa" />
-      </Pressable>
-    </View>
-  </View>
-
-  {/* Ring + Buttons */}
-  <View style={styles.waterRow}>
-
-    {/* Ring */}
-    <View style={styles.waterRingWrap}>
-      <Svg width={64} height={64}>
-        <Circle
-          cx="32"
-          cy="32"
-          r="26"
-          stroke="#1a1a1a"
-          strokeWidth="6"
-          fill="none"
-        />
-
-       <AnimatedCircle
-  cx="32"
-  cy="32"
-  r="26"
-  stroke="#818cf8"
-  strokeWidth="6"
-  fill="none"
-  strokeDasharray={waterCircumference}
-  animatedProps={animatedWaterProps}
-  strokeLinecap="round"
-  rotation="-90"
-  origin="32,32"
-/>
-
-      </Svg>
-
-      <Droplets size={18} color="#818cf8" style={styles.waterDrop} />
-    </View>
-
-    {/* Quick buttons */}
-    {[250, 500, 750].map(v => (
-      <Pressable
-        key={v}
-        style={styles.waterQuick}
-        onPress={async () => {
-          await logWater(v);
-          await refresh();
-        }}
-      >
-        <Text style={styles.waterQuickText}>+{v}</Text>
-      </Pressable>
-    ))}
-
-  </View>
-</View>
-
-        {/* COACH MESSAGE */}
-  <Text style={styles.section}>STON INTELLIGENCE</Text>
-
-<Pressable
-  style={styles.intelCard}
-  onPress={async () => {
-    if (coach.action === 'water') {
-      await logWater(coach.amount ?? 500);
-      refresh();
-    }
-    if (coach.action === 'meal') {
-      await logMeal(coach.amount ?? 400);
-      refresh();
-    }
-    if (coach.action === 'workout') {
-      await logWorkout();
-      refresh();
-    }
-  }}
->
-  <View style={styles.intelRow}>
-    {/* Icon */}
-    <View style={styles.intelIconWrap}>
-      <Sparkles size={18} color="#818cf8" />
-    </View>
-
-    {/* Message */}
-    <View style={{ flex: 1 }}>
-      <Text style={styles.coachMsg}>{coach.message}</Text>
-      <Text style={styles.coachSub}>{coach.sub}</Text>
-
-      {coach.action && (
-        <View style={styles.coachCta}>
-          <Text style={styles.coachCtaText}>
-            {coach.cta ?? 'Tap to take action'}
-          </Text>
-        </View>
-      )}
-    </View>
-  </View>
-</Pressable>
-
-
+              <View style={styles.aiContent}>
+                <Text style={styles.aiMessage}>{coach.message}</Text>
+                <Text style={styles.aiSub}>{coach.sub}</Text>
+                {coach.action && (
+                  <View style={styles.aiCta}>
+                    <Text style={styles.aiCtaText}>{coach.cta ?? 'Tap to take action'}</Text>
+                    <ChevronRight size={14} color="#a78bfa" />
+                  </View>
+                )}
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
       </ScrollView>
 
-      {/* BOTTOM NAV */}
+      {/* ==================== BOTTOM NAV ==================== */}
       <View style={styles.bottomNav}>
-        {[LayoutGrid, TrendingUp, Plus, MessageSquare, User].map((Icon, i) => (
-          <Pressable key={i} style={i === 2 ? styles.centerBtn : undefined}>
-            <Icon size={24} color={i === 2 ? '#fff' : '#666'} />
-          </Pressable>
-        ))}
+        <LinearGradient
+          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.95)', '#000']}
+          style={styles.bottomNavGradient}
+        >
+          <View style={styles.navItems}>
+            {[
+              { icon: LayoutGrid, active: true },
+              { icon: Activity, active: false },
+              { icon: Plus, center: true },
+              { icon: MessageSquare, active: false },
+              { icon: User, active: false },
+            ].map((item, i) => (
+              <Pressable
+                key={i}
+                style={item.center ? styles.navCenterBtn : styles.navBtn}
+                onPress={() => {
+                  if (i === 4) router.push('/Profile');
+                }}
+              >
+                {item.center ? (
+                  <LinearGradient colors={['#818cf8', '#a78bfa']} style={styles.navCenterGradient}>
+                    <item.icon size={24} color="#fff" />
+                  </LinearGradient>
+                ) : (
+                  <item.icon size={22} color={item.active ? '#818cf8' : '#555'} />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </LinearGradient>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  logo: {
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 4,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  iconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  notifDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#818cf8',
+  },
+  avatarBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  avatarGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Greeting
+  greetingWrap: {
+    paddingHorizontal: 20,
+    marginTop: 16,
+  },
+  greeting: {
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  subGreeting: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 14,
+    marginTop: 4,
+  },
+
+  // Hero Score
+  heroSection: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  heroGlow: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+  },
+  heroGlowGradient: {
+    flex: 1,
+    borderRadius: 140,
+  },
+  scoreRing: {
+    width: 210,
+    height: 210,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scoreCenter: {
+    position: 'absolute',
+    alignItems: 'center',
+  },
+  scoreLabel: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  scoreValue: {
+    fontSize: 44,
+    fontWeight: '900',
+    marginTop: -2,
+  },
+  streakBadge: {
+    marginTop: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  streakGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  streakEmoji: {
+    fontSize: 14,
+  },
+  streakText: {
+    color: '#fbbf24',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  // Section Title
+  sectionTitle: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+
+  // Metrics Grid
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  metricCard: {
+    width: (width - 42) / 2,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  metricGradient: {
+    padding: 16,
+    position: 'relative',
+  },
+  metricIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricValue: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '900',
+    marginTop: 10,
+  },
+  metricLabel: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  metricArrow: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+  },
+
+  // Workout Card
   workoutCard: {
-  marginHorizontal: 24,
-  backgroundColor: '#111',
-  padding: 24,
-  borderRadius: 32,
-},
-foodRingWrap: {
-  position: 'relative',
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-
-intelCard: {
-  marginHorizontal: 24,
-  padding: 16,
-  borderRadius: 24,
-  backgroundColor: '#111',
-},
-
-intelRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 12,
-},
-
-intelIconWrap: {
-  width: 36,
-  height: 36,
-  borderRadius: 12,
-  backgroundColor: '#1a1a1a',
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-
-intelHint: {
-  marginTop: 6,
-  color: '#555',
-  fontSize: 10,
-  fontWeight: '700',
-},
-
-
-foodRingIcon: {
-  position: 'absolute',
-},
-waterCard: {
-  marginHorizontal: 24,
-  marginTop: 24,
-  backgroundColor: '#111',
-  borderRadius: 32,
-  padding: 20,
-},
-
-
-
-waterHeader: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-},
-
-waterTitle: {
-  color: '#818cf8',
-  fontSize: 10,
-  fontWeight: '900',
-  letterSpacing: 2,
-},
-
-waterSub: {
-  color: '#aaa',
-  fontWeight: '800',
-  marginTop: 4,
-},
-
-waterIconBtn: {
-  backgroundColor: '#1a1a1a',
-  padding: 8,
-  borderRadius: 12,
-},
-
-waterRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 12,
-  marginTop: 20,
-},
-
-waterRingWrap: {
-  position: 'relative',
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-
-waterDrop: {
-  position: 'absolute',
-},
-
-waterQuick: {
-  backgroundColor: '#1a1a1a',
-  paddingVertical: 10,
-  paddingHorizontal: 18,
-  borderRadius: 20,
-},
-
-waterQuickText: {
-  color: '#fff',
-  fontWeight: '900',
-},
-
-
-
-
-waterArrow: {
-  backgroundColor: '#222',
-  padding: 6,
-  borderRadius: 10,
-},
-
-
-
-
-waterBtns: {
-  flexDirection: 'row',
-  gap: 10,
-},
-
-waterBtn: {
-  backgroundColor: '#222',
-  paddingHorizontal: 14,
-  paddingVertical: 8,
-  borderRadius: 14,
-},
-
-waterBtnText: {
-  color: '#fff',
-  fontWeight: '800',
-  fontSize: 11,
-},
-
-
-coachSmall: {
-  color: '#555',
-  fontSize: 10,
-  fontWeight: '900',
-  letterSpacing: 2,
-},
-
-workoutTitle: {
-  color: '#fff',
-  fontSize: 22,
-  fontWeight: '900',
-  marginVertical: 10,
-},
-hydrationCard: {
-  marginHorizontal: 24,
-  marginTop: 32,
-  backgroundColor: '#111',
-  borderRadius: 28,
-  padding: 20,
-},
-
-hydrationTitle: {
-  color: '#fff',
-  fontWeight: '900',
-  fontSize: 16,
-},
-
-hydrationSub: {
-  color: '#666',
-  marginTop: 4,
-},
-
-
-
-waterText: {
-  color: '#818cf8',
-  fontWeight: '900',
-},
-
-
-workoutTags: { flexDirection: 'row', gap: 8 },
-
-tagPill: {
-  backgroundColor: 'rgba(255,255,255,0.05)',
-  paddingHorizontal: 10,
-  paddingVertical: 4,
-  borderRadius: 8,
-},
-
-workoutActions: {
-  flexDirection: 'row',
-  gap: 10,
-  marginTop: 20,
-},
-
-primaryBtn: {
-  flex: 1,
-  backgroundColor: '#818cf8',
-  padding: 14,
-  borderRadius: 16,
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexDirection: 'row',
-  gap: 8,
-},
-macroVal: {
-  color: '#fff',
-  fontSize: 11,
-  fontWeight: '800',
-  marginBottom: 4,
-},
-
-
-primaryText: { fontWeight: '900',
-  letterSpacing: 1.2,
-  fontSize: 10, },
-
-secondaryBtn: {
-  flex: 1,
-  backgroundColor: '#222',
-  padding: 14,
-  borderRadius: 16,
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexDirection: 'row',
-  gap: 8,
-},
-
-
-secondaryText: { color: '#fff',
-  fontWeight: '900',
-  letterSpacing: 1.2,
-  fontSize: 10,},
-
-foodCard: {
-  margin: 24,
-  backgroundColor: '#111',
-  padding: 20,
-  borderRadius: 32,
-},
-
-foodHeader: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-},
-
-foodTitle: { color: '#fff', fontWeight: '900' },
-foodSub: { color: '#555', marginTop: 2 },
-
-iconSquare: {
-  padding: 10,
-  backgroundColor: '#222',
-  borderRadius: 14,
-},
-
-iconPrimary: {
-  padding: 10,
-  backgroundColor: '#818cf8',
-  borderRadius: 14,
-},
-
-foodBrowse: {
-  borderTopWidth: 1,
-  borderTopColor: '#222',
-  marginVertical: 16,
-  paddingTop: 12,
-},
-
-macroRow: { flexDirection: 'row', gap: 10 },
-
-macroLabel: { color: '#444', fontSize: 10, fontWeight: '900' },
-
-macroBarBg: {
-  height: 4,
-  backgroundColor: '#222',
-  borderRadius: 10,
-  marginTop: 6,
-},
-
-macroFill: {
-  height: 4,
-  backgroundColor: '#818cf8',
-  borderRadius: 10,
-},
-
-  container: { flex: 1, backgroundColor: '#000' },
-  header: { paddingTop: 60, paddingHorizontal: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  loop: { fontSize: 22, fontWeight: '900', letterSpacing: 6 },
-  iconBtn: { backgroundColor: '#111', padding: 10, borderRadius: 14 },
-  dot: { width: 6, height: 6, backgroundColor: '#818cf8', borderRadius: 3, position: 'absolute', top: 6, right: 6 },
-  avatar: { width: 40, height: 40, borderRadius: 14, backgroundColor: '#111', alignItems: 'center', justifyContent: 'center' },
-  greeting: { fontSize: 30, fontWeight: '900', marginTop: 24, paddingHorizontal: 24 },
-  subGreeting: { color: '#666', paddingHorizontal: 24, marginTop: 6 },
-  ringWrap: { alignItems: 'center', marginTop: 32 },
-  ringCenter: { position: 'absolute', alignItems: 'center', justifyContent: 'center', top: 70 },
-  score: { color: '#fff', fontSize: 40, fontWeight: '900' },
-  today: { color: '#666', fontSize: 10, letterSpacing: 3 },
-  streak: { textAlign: 'center', marginTop: 16, color: '#818cf8', fontSize: 10, letterSpacing: 3, fontWeight: '800' },
-
-  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, padding: 24 },
-  metricCard: { width: (width - 60) / 2, backgroundColor: '#111', borderRadius: 24, padding: 16 },
-  metricTop: { flexDirection: 'row', justifyContent: 'space-between' },
-  metricValue: { color: '#fff', fontWeight: '900', marginTop: 10 },
-  metricLabel: { color: '#555', fontSize: 10 },
-
-  nextAction: { marginHorizontal: 24, backgroundColor: '#111', borderRadius: 24, padding: 16 },
-  nextTitle: { color: '#818cf8', fontWeight: '800', marginBottom: 10 },
-  nextBtn: { backgroundColor: '#fff', borderRadius: 18, padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  nextText: { fontWeight: '900' },
-
-  mission: { marginHorizontal: 24, padding: 24, borderRadius: 32, backgroundColor: '#111' },
-  missionHeader: { flexDirection: 'row', justifyContent: 'space-between' },
-  coach: { color: '#818cf8', fontSize: 10 },
-  missionTitle: { color: '#fff', fontSize: 24, fontWeight: '900', marginVertical: 12 },
-  tags: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  tag: { borderWidth: 1, borderColor: '#222', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  tagText: { color: '#777', fontSize: 10 },
-  startBtn: { backgroundColor: '#fff', borderRadius: 24, padding: 16, flexDirection: 'row', justifyContent: 'center', gap: 8 },
-  startText: { fontWeight: '900' },
-
- 
-  section: { marginTop: 32, marginBottom: 12, textAlign: 'center', color: '#444', letterSpacing: 3, fontSize: 10 },
-  sideGrid: { flexDirection: 'row', justifyContent: 'space-evenly' },
-  sideCard: { backgroundColor: '#111', borderRadius: 22, padding: 16, alignItems: 'center', width: 110 },
-  sideVal: { color: '#fff', fontWeight: '800', marginTop: 6, fontSize: 13, textAlign: 'center', lineHeight: 18 },
-  sideLabel: { color: '#555', fontSize: 9 },
-  
-
-  coachCard: { margin: 24, padding: 16, borderRadius: 24, backgroundColor: '#111', flexDirection: 'row', alignItems: 'center', gap: 12 },
-  coachAvatar: { width: 42, height: 42, borderRadius: 21 },
-  coachName: { color: '#818cf8', fontSize: 10 },
-  coachMsg: { color: '#ddd', fontWeight: '700' },
-  coachSub: {
-    color: '#6B7280',
+    marginHorizontal: 20,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  workoutGradient: {
+    padding: 20,
+  },
+  workoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  workoutCoach: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  workoutTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  workoutSub: {
+    color: 'rgba(255,255,255,0.5)',
     fontSize: 12,
     marginTop: 6,
   },
-  coachCta: {
-    alignSelf: 'flex-start',
-    marginTop: 10,
-    backgroundColor: '#1F1F1F',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  workoutIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(129, 140, 248, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  coachCtaText: {
-    color: '#E5E7EB',
-    fontSize: 11,
+  workoutTags: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+  },
+  tagPill: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  tagText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+  },
+  workoutActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 18,
+  },
+  workoutPrimaryBtn: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  workoutBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+  },
+  workoutBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  workoutSecondaryBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 14,
+  },
+  workoutSecondaryText: {
+    color: '#888',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 
-  bottomNav: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, backgroundColor: '#050505', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
-  centerBtn: { backgroundColor: '#6366f1', padding: 14, borderRadius: 20, marginBottom: 30 },
+  // Nutrition Card
+  nutritionCard: {
+    marginHorizontal: 20,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  nutritionGradient: {
+    padding: 20,
+  },
+  nutritionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  nutritionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  nutritionRing: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nutritionIcon: {
+    position: 'absolute',
+  },
+  nutritionTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  nutritionSub: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  nutritionActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  nutritionIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nutritionAddBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  nutritionAddGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  macrosRow: {
+    marginTop: 18,
+    gap: 12,
+  },
+  macroItem: {
+    gap: 6,
+  },
+  macroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  macroLabel: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  macroVal: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  macroBar: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  macroFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+
+  // Water Card
+  waterCard: {
+    marginHorizontal: 20,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  waterGradient: {
+    padding: 20,
+  },
+  waterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  waterLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  waterRing: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  waterIcon: {
+    position: 'absolute',
+  },
+  waterTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  waterSub: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  waterDetailBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(96, 165, 250, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  waterButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  waterBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  waterBtnText: {
+    color: '#60a5fa',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
+  // AI Card
+  aiCard: {
+    marginHorizontal: 20,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  aiGradient: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 18,
+    gap: 14,
+  },
+  aiIconWrap: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  aiIconGradient: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiContent: {
+    flex: 1,
+  },
+  aiMessage: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  aiSub: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  aiCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(129, 140, 248, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  aiCtaText: {
+    color: '#a78bfa',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  // Bottom Nav
+  bottomNav: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  bottomNavGradient: {
+    paddingTop: 20,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+  },
+  navItems: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  navBtn: {
+    padding: 10,
+  },
+  navCenterBtn: {
+    marginTop: -30,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  navCenterGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

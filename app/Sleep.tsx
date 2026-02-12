@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
 } from 'react-native';
+import MaskedView from '@react-native-masked-view/masked-view';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import SleepHistory from '@/components/sleep/SleepHistory';
 import {
@@ -25,10 +26,10 @@ import type { SleepDaily } from '@/lib/sleep/types';
 import { supabase } from '@/lib/supabase';
 import { upsertSleepReflection } from '@/lib/sleep/queries';
 import SegmentedControl from '@/components/ui/SegmentedControl';
-import BarChart from '@/components/ui/BarChart';
 import BottomSheet from '@/components/ui/BottomSheet';
 import SleepReflectionSheet from '@/components/sleep/SleepReflectionSheet';
 import SleepScheduleSheet from '@/components/sleep/SleepScheduleSheet';
+import { router } from 'expo-router';
 
 type Range = 'Day' | 'Week' | 'Month' | '6M';
 type ViewMode = 'Today' | 'History';
@@ -255,11 +256,35 @@ const sleepStageData = useMemo(() => {
   /* ---------------- UI ---------------- */
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={['#020617', '#0a1628', '#000000']}
+        style={StyleSheet.absoluteFill}
+      />
       {/* HEADER */}
       <View style={styles.header}>
-        <ArrowLeft size={18} color="#9CA3AF" />
-        <Text style={styles.headerTitle}>Sleep</Text>
-        <RefreshCw size={18} color="#6B7280" />
+        <Pressable style={styles.iconBtn} onPress={() => router.back()}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)']}
+            style={styles.iconBtnGradient}
+          >
+            <ArrowLeft size={18} color="#fff" />
+          </LinearGradient>
+        </Pressable>
+
+        <MaskedView maskElement={<Text style={styles.headerTitle}>Sleep</Text>}>
+          <LinearGradient colors={['#60a5fa', '#a78bfa']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            <Text style={[styles.headerTitle, { opacity: 0 }]}>Sleep</Text>
+          </LinearGradient>
+        </MaskedView>
+
+        <Pressable style={styles.iconBtn} onPress={() => userId && getSleepToday(userId).then(setSleepToday)}>
+          <LinearGradient
+            colors={['rgba(96, 165, 250, 0.15)', 'rgba(96, 165, 250, 0.05)']}
+            style={styles.iconBtnGradient}
+          >
+            <RefreshCw size={18} color="#60a5fa" />
+          </LinearGradient>
+        </Pressable>
       </View>
 
       {/* TABS */}
@@ -275,7 +300,11 @@ const sleepStageData = useMemo(() => {
         {view === 'Today' ? (
           <>
             {/* LAST NIGHT */}
-            <View style={styles.hero}>
+            <View style={styles.heroCard}>
+              <LinearGradient
+                colors={['rgba(96, 165, 250, 0.18)', 'rgba(167, 139, 250, 0.08)', 'rgba(15, 23, 42, 0.2)']}
+                style={styles.heroGlow}
+              />
               <View style={styles.heroBadge}>
                 <Moon size={12} color="#A5B4FC" />
                 <Text style={styles.heroBadgeText}>Last Night</Text>
@@ -407,7 +436,7 @@ const sleepStageData = useMemo(() => {
             {/* INSIGHT */}
             {insight && (
   <LinearGradient
-    colors={['#0F0F0F', '#090909']}
+    colors={['rgba(15, 23, 42, 0.7)', 'rgba(2, 6, 23, 0.7)']}
     style={styles.insightCard}
   >
 
@@ -527,7 +556,7 @@ const sleepStageData = useMemo(() => {
         ) : (
           <>
   {/* HISTORY */}
-  <View style={{ marginTop: 30, marginBottom:-10 }}>
+  <View style={{ marginTop: 20, marginBottom: 6 }}>
   <SegmentedControl
     options={['Day', 'Week', 'Month', '6M']}
     selected={range}
@@ -622,20 +651,50 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
 
   header: {
-    paddingTop: 56,
-    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
 
-  headerTitle: { color: '#fff', fontSize: 17, fontWeight: '600' },
+  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
 
-  tabsWrap: { marginTop: 20, paddingHorizontal: 24 },
+  iconBtn: { borderRadius: 14, overflow: 'hidden' },
+  iconBtnGradient: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+
+  tabsWrap: { marginTop: 8, paddingHorizontal: 24 },
 
   scroll: { paddingHorizontal: 24, paddingBottom: 120 },
 
-  hero: { alignItems: 'center', marginTop: 24, marginBottom: 32 },
+  heroCard: {
+    marginTop: 16,
+    marginBottom: 20,
+    padding: 22,
+    borderRadius: 26,
+    backgroundColor: 'rgba(10, 15, 28, 0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(96, 165, 250, 0.12)',
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroGlow: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    top: -90,
+  },
 
   heroBadge: { flexDirection: 'row', gap: 6, marginBottom: 10 },
 
@@ -647,35 +706,40 @@ const styles = StyleSheet.create({
   },
 
   stagesCard: {
-  marginBottom: 28,
-},
+    marginBottom: 20,
+    padding: 18,
+    borderRadius: 24,
+    backgroundColor: 'rgba(10, 15, 28, 0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(96, 165, 250, 0.08)',
+  },
 
-stagesTitle: {
-  color: '#6B7280',
-  fontSize: 11,
-  letterSpacing: 1.5,
-  marginBottom: 10,
-  textTransform: 'uppercase',
-},
+  stagesTitle: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 10,
+    letterSpacing: 2,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+  },
 
-stageBar: {
-  flexDirection: 'row',
-  height: 8,
-  borderRadius: 8,
-  overflow: 'hidden',
-  backgroundColor: '#0A0A0A',
-  marginBottom: 16,
-},
+  stageBar: {
+    flexDirection: 'row',
+    height: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 16,
+  },
 
 
-stageSegment: {
-  height: '100%',
-},
+  stageSegment: {
+    height: '100%',
+  },
 
-stageGrid: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-},
+  stageGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
 
 stageItem: {
   alignItems: 'center',
@@ -689,7 +753,7 @@ dot: {
 },
 
 stageLabel: {
-  color: '#6B7280',
+  color: 'rgba(255,255,255,0.45)',
   fontSize: 11,
 },
 
@@ -699,35 +763,43 @@ stageValue: {
   fontSize: 13,
 },
 
-  heroValue: { color: '#fff', fontSize: 64, fontWeight: '900' },
-  heroUnit: { fontSize: 28, color: '#4B5563' },
+  heroValue: { color: '#fff', fontSize: 64, fontWeight: '900', letterSpacing: -1 },
+  heroUnit: { fontSize: 28, color: '#94A3B8' },
 
-  heroTime: { color: '#6B7280', marginTop: 6, fontSize: 13 },
+  heroTime: { color: 'rgba(255,255,255,0.45)', marginTop: 6, fontSize: 13 },
 
-  insightCard: { borderRadius: 26, padding: 20, marginBottom: 24 },
+  insightCard: {
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(129, 140, 248, 0.18)',
+  },
 
   insightHeader: { flexDirection: 'row', justifyContent: 'space-between' },
-  insightTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  insightTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
 
   insightEvidence: { fontSize: 28, fontWeight: '800', marginTop: 10 },
-  insightSub: { color: '#9CA3AF', fontSize: 13 },
+  insightSub: { color: 'rgba(255,255,255,0.45)', fontSize: 12 },
 
   divider: {
     height: 1,
-    backgroundColor: '#1F2937',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     marginVertical: 14,
   },
 
-  insightMeaning: { color: '#D1D5DB', fontSize: 14 },
+  insightMeaning: { color: 'rgba(255,255,255,0.7)', fontSize: 14, lineHeight: 20 },
 
   reflection: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F0F0F',
+    backgroundColor: 'rgba(10, 15, 28, 0.7)',
     borderRadius: 22,
     padding: 16,
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(96, 165, 250, 0.08)',
   },
 
   reflectionIcon: {
@@ -739,14 +811,16 @@ stageValue: {
     justifyContent: 'center',
   },
 
-  reflectionTitle: { color: '#fff', fontSize: 15 },
-  reflectionSub: { color: '#9CA3AF', fontSize: 12 },
+  reflectionTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  reflectionSub: { color: 'rgba(255,255,255,0.55)', fontSize: 12 },
 
   windowCard: {
-    backgroundColor: '#0F0F0F',
+    backgroundColor: 'rgba(10, 15, 28, 0.7)',
     borderRadius: 24,
     padding: 20,
-    marginBottom: 24,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(96, 165, 250, 0.08)',
   },
 
   windowHeader: {
@@ -756,19 +830,19 @@ stageValue: {
   },
 
   windowTitleRow: { flexDirection: 'row', gap: 6 },
-  windowTitle: { color: '#D1D5DB', fontSize: 14 },
+  windowTitle: { color: '#E5E7EB', fontSize: 14, fontWeight: '600' },
 
-  editText: { color: '#9CA3AF', fontSize: 11, letterSpacing: 1 },
+  editText: { color: '#A5B4FC', fontSize: 11, letterSpacing: 1, fontWeight: '700' },
 
   windowTimes: { flexDirection: 'row', alignItems: 'center' },
 
-  windowTime: { color: '#fff', fontSize: 18, fontWeight: '600' },
-  windowLabel: { color: '#6B7280', fontSize: 11 },
+  windowTime: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  windowLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 11 },
 
   windowLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#1F2937',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     marginHorizontal: 16,
   },
 
@@ -778,24 +852,26 @@ stageValue: {
     justifyContent: 'space-between',
   },
 
-  goalText: { color: '#9CA3AF', fontSize: 13 },
+  goalText: { color: 'rgba(255,255,255,0.5)', fontSize: 13 },
 
   habit: {
     flexDirection: 'row',
     gap: 10,
     padding: 16,
-    backgroundColor: '#1E1B4B',
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(129, 140, 248, 0.25)',
   },
   reflectionDone: {
-  backgroundColor: '#0B1220',
-  borderColor: '#10B98133',
-  borderWidth: 1,
-},
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+    borderWidth: 1,
+  },
 
-reflectionIconDone: {
-  backgroundColor: '#064E3B',
-},
+  reflectionIconDone: {
+    backgroundColor: 'rgba(16, 185, 129, 0.25)',
+  },
 
 
   habitTitle: { color: '#E0E7FF', fontSize: 14 },
